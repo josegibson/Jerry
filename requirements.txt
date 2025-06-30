@@ -1,0 +1,19 @@
+# CLI Framework
+typer>=0.9.0                # For CLI applications
+
+# LLM Provider Libraries (install as needed)
+google-generativeai>=0.8.0  # For Gemini API
+openai>=1.0.0               # For OpenAI API
+
+# LangChain dependencies for tool calling
+langchain-core>=0.3.0
+langchain-google-genai>=1.0.0
+langchain-openai>=0.2.0
+langchain-community>=0.3.0
+pydantic>=2.0.0
+
+# LangGraph for native graph orchestration
+langgraph>=0.2.34
+
+# Load environment variables from .env
+python-dotenv>=1.0.1
