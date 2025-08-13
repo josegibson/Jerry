@@ -15,6 +15,8 @@ class MultiLLMCLI:
             "messages": list(self.history),
             "tool_results": [],
             "provider_name": None,
+            "last_token_usage": {"input": 0, "output": 0, "total": 0},
+            "session_token_usage": {"input": 0, "output": 0, "total": 0},
         }
 
     def run(self):
@@ -45,15 +47,32 @@ class MultiLLMCLI:
                 ai_messages = [m for m in updated_state["messages"] if isinstance(m, AIMessage)]
                 response_text = ai_messages[-1].content if ai_messages else ""
 
-                print(f"\n🤖 {updated_state.get('provider_name') or 'LLM'}: ", end="", flush=True)
-                print(response_text)
-
                 if updated_state.get("tool_results"):
                     print("\n🔧 Tool results:")
                     for res in updated_state["tool_results"]:
                         tool_name = res.get("tool_name", "<unknown>")
                         tool_output = res.get("result", "")
                         print(f"\n[{tool_name}]\n{tool_output}")
+
+                retrieved_context = updated_state.get("retrieved_context")
+                if retrieved_context:
+                    print("\n📚 Retrieved context injected (truncated):")
+                    preview = retrieved_context[:1400].replace("\n\n", "\n")
+                    print(preview + ("..." if len(retrieved_context) > 1400 else ""))
+
+                print(f"\n🤖 {updated_state.get('provider_name') or 'LLM'}: ", end="", flush=True)
+                print(response_text)
+
+                # Show token usage just before agent response
+                last_usage = updated_state.get("last_token_usage", {}) or {}
+                session_usage = updated_state.get("session_token_usage", {}) or {}
+                print(
+                    f"\n📊 Tokens (last): in={last_usage.get('input', 0)}, out={last_usage.get('output', 0)}, total={last_usage.get('total', 0)}"
+                )
+                print(
+                    f"📈 Tokens (session): in={session_usage.get('input', 0)}, out={session_usage.get('output', 0)}, total={session_usage.get('total', 0)}"
+                )
+                print(f"📈 Prompt count (session): count={session_usage.get('count', 0)}")
 
                 # Sync local state
                 self.graph_state = updated_state

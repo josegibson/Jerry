@@ -19,7 +19,7 @@ from .utils import (
     search_content_python,
     read_file_python,
 )
-
+from .vectorstore import get_retriever
 
 # ---------------------------------------------------------------------------
 # Input-validation helpers (industry-standard approach)
@@ -111,6 +111,87 @@ class VaultReadInput(BaseModel):
         return v.strip()
 
 
+# New tool inputs
+class WebSearchInput(BaseModel):
+    query: str = Field(description="Web search query")
+    max_results: int = Field(default=5, ge=1, le=10, description="Max results to return")
+
+    @field_validator("query")
+    def validate_query(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Query cannot be empty")
+        return v.strip()
+
+
+class SemanticSearchInput(BaseModel):
+    query: str = Field(description="Semantic search query against the vault index")
+    k: int = Field(default=5, ge=1, le=10, description="Number of results")
+
+    @field_validator("query")
+    def validate_query(cls, v):
+        if not v or not v.strip():
+            raise ValueError("Query cannot be empty")
+        return v.strip()
+
+
+@tool(args_schema=WebSearchInput)
+def web_search(query: str, max_results: int = 5) -> str:
+    """Search the web and return a concise set of results with titles and URLs.
+
+    Uses Tavily if TAVILY_API_KEY is set; otherwise falls back to DuckDuckGo instant answers.
+    """
+    try:
+        from tavily import TavilyClient  # type: ignore
+        import os
+        api_key = os.getenv("TAVILY_API_KEY")
+        if api_key:
+            client = TavilyClient(api_key=api_key)
+            res = client.search(query=query, max_results=max_results)
+            items = res.get("results", [])
+            lines = []
+            for item in items[:max_results]:
+                title = item.get("title") or ""
+                url = item.get("url") or ""
+                snippet = item.get("content") or item.get("snippet") or ""
+                lines.append(f"- {title}\n  {url}\n  {snippet}")
+            return "\n".join(lines) if lines else "No results"
+    except Exception:
+        pass
+
+    # Fallback to DuckDuckGo via requests (no API key)
+    try:
+        import requests
+        resp = requests.get(
+            "https://api.duckduckgo.com/",
+            params={"q": query, "format": "json", "no_redirect": 1, "no_html": 1},
+            timeout=10,
+        )
+        data = resp.json()
+        lines: List[str] = []
+        for topic in data.get("RelatedTopics", [])[:max_results]:
+            if isinstance(topic, dict):
+                text = topic.get("Text") or ""
+                url = topic.get("FirstURL") or ""
+                if text or url:
+                    lines.append(f"- {text}\n  {url}")
+        return "\n".join(lines) if lines else "No results"
+    except Exception as e:
+        return f"Web search error: {e}"
+
+
+@tool(args_schema=SemanticSearchInput)
+def semantic_vault_search(query: str, k: int = 5) -> str:
+    """Semantic search over the Obsidian vault vector store and return top-k chunks with sources."""
+    try:
+        retriever = get_retriever(persist_directory=os.getenv("CHROMA_PERSIST_DIR", ".chroma"), top_k=k)
+        docs = retriever.invoke(query)
+        lines: List[str] = []
+        for idx, doc in enumerate(docs, start=1):
+            source = doc.metadata.get("source") or doc.metadata.get("path") or doc.metadata.get("file_path") or "unknown"
+            lines.append(f"[{idx}] {source}\n{doc.page_content}")
+        return "\n\n".join(lines) if lines else "No semantic matches"
+    except Exception as e:
+        return f"Semantic search error: {e}"
 
 
 @tool(args_schema=VaultListInput)
@@ -236,6 +317,8 @@ def vault_read_file(path: str, pager: bool = False) -> str:
 
 # List of all available vault tools for easy import
 VAULT_TOOLS = [
+    web_search,
+    semantic_vault_search,
     vault_list_files,
     vault_search_content,
     vault_read_file,
@@ -251,10 +334,12 @@ def get_vault_tools_description() -> str:
     """Get a description of all available vault tools."""
     return """
 Available Vault Tools:
-1. vault_list_files: List files in the vault directory
-2. vault_search_content: Search for text content within vault files  
-3. vault_read_file: Read and display the contents of a vault file
+1. web_search: Search the web for relevant information
+2. semantic_vault_search: Semantic search over the Obsidian vault vector store
+3. vault_list_files: List files in the vault directory
+4. vault_search_content: Search for text content within vault files  
+5. vault_read_file: Read and display the contents of a vault file
 
-These tools allow you to explore, search, and read content from the vault directory.
+These tools allow you to explore, search, and read content from the vault directory and the web.
 Make sure VAULT_PATH environment variable is set to use these tools.
 """ 

@@ -9,9 +9,12 @@ Provides three main commands:
 """
 
 import subprocess
+import os
+from pathlib import Path
 from typing import Optional
 
 import typer
+from dotenv import load_dotenv
 from typer import Typer, Option, Argument
 
 from .utils import (
@@ -22,7 +25,9 @@ from .utils import (
     search_content_python,
     read_file_python,
 )
+from .vectorstore import ensure_vector_index, semantic_search_direct
 
+import chromadb
 
 app = Typer(name="vault-tools", help="CLI tools for managing vault files")
 
@@ -142,6 +147,52 @@ def read(
         typer.echo(error, err=True)
         raise typer.Exit(1)
     typer.echo(content)
+
+
+
+@app.command()
+def semantic_search(
+    query: str = typer.Argument(..., help="Semantic search query"),
+    k: int = typer.Option(5, "--k", "-k", help="Number of results"),
+) -> None:
+    """Semantic search over the persisted Chroma vector store without LangChain retriever."""
+    load_dotenv()
+
+    persist_dir = os.getenv("CHROMA_PERSIST_DIR", ".chroma")
+    results = semantic_search_direct(query=query, k=k, persist_directory=persist_dir)
+
+    if results:
+        for i, r in enumerate(results, start=1):
+            typer.echo(f"[{i}] Source: {r['source']}\n{r['content']}\nScore: {r['score']}\n{'-'*40}\n")
+    else:
+        typer.echo("No results found.")
+
+
+
+
+@app.command()
+def reindex(
+    vault_path: Optional[str] = typer.Option(None, help="Path to Obsidian vault. Defaults to VAULT_PATH"),
+    persist_dir: str = typer.Option(".chroma", help="Directory to persist Chroma DB"),
+    chunk_size: int = typer.Option(1200, help="Chunk size (characters)"),
+    chunk_overlap: int = typer.Option(200, help="Chunk overlap (characters)"),
+    glob: str = typer.Option("**/*.md", help="Glob for files to index"),
+):
+    """(Re)build the local vector index from the vault."""
+    load_dotenv()
+    if vault_path:
+        os.environ["VAULT_PATH"] = vault_path
+    if not os.getenv("VAULT_PATH"):
+        raise typer.Exit(code=2)
+
+    index = ensure_vector_index(
+        persist_directory=persist_dir,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        file_glob=glob,
+    )
+    stats = index.get("_stats", {}) if isinstance(index, dict) else {}
+    typer.echo(f"Index ready at {persist_dir}. {stats}")
 
 
 def main():

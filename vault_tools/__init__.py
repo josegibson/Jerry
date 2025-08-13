@@ -7,3 +7,5 @@ external tools like fd, rg, and bat.
 """
 
 __version__ = "1.0.0"
+
+from .tools import get_vault_tools, VAULT_TOOLS
