@@ -6,6 +6,7 @@ Provides three main commands:
 - list: List markdown files in the vault
 - search: Search for text within vault files  
 - read: Display vault files with syntax highlighting
+- write: Create or overwrite a markdown file in the vault
 """
 
 import subprocess
@@ -17,7 +18,7 @@ import typer
 from dotenv import load_dotenv
 from typer import Typer, Option, Argument
 
-from .utils import (
+from ._utils import (
     get_vault_path,
     validate_path_in_vault,
     check_tool_available,
@@ -26,6 +27,9 @@ from .utils import (
     read_file_python,
 )
 from .vectorstore import ensure_vector_index, semantic_search_direct
+from .vault_write_tools import write_markdown_file
+from .vault_read_tools import vault_read_file
+from .vault_search_tools import vault_list_files as tool_vault_list_files, vault_search_content as tool_vault_search_content, web_search as tool_web_search, semantic_vault_search as tool_semantic_vault_search
 
 import chromadb
 
@@ -39,33 +43,13 @@ def list_files(
 ) -> None:
     """List markdown files in the vault.
 
-    Uses `fd` when available, otherwise falls back to a pure-Python traversal.
+    Uses the same implementation as the LangChain tool.
     """
-    # Prefer fd if available for speed
-    if check_tool_available("fd"):
-        vault_path = get_vault_path()
-        cmd = ["fd"]
-        if ext:
-            cmd.extend(["-e", ext])
-        else:
-            cmd.extend(["-e", "md"])
-        if hidden:
-            cmd.append("--hidden")
-        cmd.extend([".", str(vault_path)])
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            typer.echo(result.stdout)
-            return
-        except subprocess.CalledProcessError as e:
-            typer.echo(f"Error running fd: {e.stderr}", err=True)
-            raise typer.Exit(e.returncode)
-
-    # Fallback to Python
-    files = list_files_python(ext or "md", hidden)
-    if files:
-        typer.echo("\n".join(files))
-    else:
-        typer.echo(f"No {ext or 'md'} files found in vault")
+    result = tool_vault_list_files.invoke({
+        "ext": (ext or "md"),
+        "hidden": hidden,
+    })
+    typer.echo(result)
 
 
 @app.command()
@@ -76,78 +60,72 @@ def search(
 ) -> None:
     """Search for text in vault markdown files.
 
-    Uses `ripgrep` when available, otherwise falls back to a pure-Python search.
+    Uses the same implementation as the LangChain tool.
     """
-    # Prefer ripgrep if available
-    if check_tool_available("rg"):
-        vault_path = get_vault_path()
-        cmd = ["rg", "--line-number", "--with-filename"]
-        if ignore_case:
-            cmd.append("--ignore-case")
-        if max_count:
-            cmd.extend(["--max-count", str(max_count)])
-        cmd.extend(["--type", "md"])  # md files only
-        cmd.append(term)
-        cmd.append(str(vault_path))
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            if result.stdout:
-                typer.echo(result.stdout)
-            else:
-                typer.echo("No matches found.")
-            return
-        except subprocess.CalledProcessError as e:
-            if e.returncode == 1:
-                typer.echo("No matches found.")
-                return
-            typer.echo(f"Error running ripgrep: {e.stderr}", err=True)
-            raise typer.Exit(e.returncode)
-
-    # Fallback to Python
-    matches = search_content_python(term, ignore_case=ignore_case, max_count=max_count, file_ext="md")
-    if matches:
-        typer.echo("\n".join(matches))
-    else:
-        typer.echo("No matches found.")
+    result = tool_vault_search_content.invoke({
+        "term": term,
+        "ignore_case": ignore_case,
+        "max_count": max_count,
+    })
+    typer.echo(result)
 
 
 @app.command()
 def read(
     path: str = Argument(..., help="Path to file to read"),
-    pager: bool = Option(True, "--pager/--no-pager", help="Use pager for output"),
+    pager: bool = Option(False, "--pager/--no-pager", help="Use pager for output when available"),
 ) -> None:
-    """Display vault file, preferring `bat` when available.
+    """Display vault file via the shared read tool.
 
-    Falls back to plain text output when `bat` is not installed.
+    Prefers `bat` when available, falls back to plain text.
     """
-    # If bat is available, use it for nice output
-    if check_tool_available("bat"):
-        vault_path = get_vault_path()
-        file_path = validate_path_in_vault(path, vault_path)
-        if not file_path.exists():
-            typer.echo(f"Error: File '{path}' does not exist", err=True)
-            raise typer.Exit(1)
-        if not file_path.is_file():
-            typer.echo(f"Error: '{path}' is not a file", err=True)
-            raise typer.Exit(1)
-        cmd = ["bat"]
-        if not pager:
-            cmd.append("--paging=never")
-        cmd.append(str(file_path))
-        try:
-            subprocess.run(cmd, check=True)
-            return
-        except subprocess.CalledProcessError as e:
-            typer.echo(f"Error running bat: {e}", err=True)
-            raise typer.Exit(e.returncode)
+    result = vault_read_file.invoke({
+        "path": path,
+        "pager": pager,
+    })
+    typer.echo(result)
 
-    # Fallback to Python plain read
-    content, error = read_file_python(path)
-    if error:
-        typer.echo(error, err=True)
-        raise typer.Exit(1)
-    typer.echo(content)
 
+@app.command()
+def write(
+    filename: str = Argument(..., help="Name of the markdown file to write ('.md' appended if missing)"),
+    content: str = Argument(..., help="Markdown content to write"),
+    directory: str = Option("./jerry", "--directory", "-d", help="Subdirectory under the vault"),
+) -> None:
+    """Create or overwrite a markdown file inside the vault."""
+    result = write_markdown_file.invoke({
+        "filename": filename,
+        "content": content,
+        "directory": directory,
+    })
+    # write_markdown_file returns a string
+    typer.echo(result)
+
+
+@app.command()
+def web_search(
+    query: str = Argument(..., help="Web search query"),
+    max_results: int = Option(5, "--max-results", "-n", help="Max results to return (1-10)"),
+) -> None:
+    """Search the web and return a concise set of results with titles and URLs."""
+    result = tool_web_search.invoke({
+        "query": query,
+        "max_results": max_results,
+    })
+    typer.echo(result)
+
+
+@app.command()
+def semantic_vault_search(
+    query: str = Argument(..., help="Semantic search query against the vault index"),
+    k: int = Option(5, "--k", "-k", help="Number of results (1-10)"),
+) -> None:
+    """Semantic search over the Obsidian vault vector store (LangChain retriever)."""
+    result = tool_semantic_vault_search.invoke({
+        "query": query,
+        "k": k,
+    })
+    typer.echo(result)
 
 
 @app.command()
@@ -193,6 +171,7 @@ def reindex(
     )
     stats = index.get("_stats", {}) if isinstance(index, dict) else {}
     typer.echo(f"Index ready at {persist_dir}. {stats}")
+
 
 
 def main():

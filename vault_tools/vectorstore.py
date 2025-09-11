@@ -27,7 +27,7 @@ import chromadb
 from chromadb.utils import embedding_functions
 import hashlib
 
-from .utils import get_vault_path
+from ._utils import get_vault_path
 
 
 @dataclass

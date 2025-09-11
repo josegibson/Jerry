@@ -186,7 +186,6 @@ def node_llm(state: ConversationState, preferred_provider: Optional[str], tools:
     # Build working messages: persona, tool guidance, retrieved context, then history
     working_msgs: List[BaseMessage] = [
         SystemMessage(content=ASSISTANT_SYSTEM_PROMPT),
-        SystemMessage(content=TOOL_GUIDANCE),
     ]
     retrieved = state.get("retrieved_context")
     if retrieved:
