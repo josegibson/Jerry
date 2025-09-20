@@ -25,13 +25,3 @@ ASSISTANT_SYSTEM_PROMPT: str = (
     "- Prefer actionable summaries over long explanations; elaborate only when asked.\n"
     "- When provided, ground answers in the 'Relevant context from the user's vault'."
 )
-
-
-TOOL_GUIDANCE: str = (
-    "You can inspect vault files using three tools: `vault_list_files`, `vault_search_content`, and "
-    "`vault_read_file`. Follow this policy when a question depends on information likely stored in the vault:\n"
-    "1. If the exact file path is unknown, first use `vault_list_files` or `vault_search_content` to find candidates.\n"
-    "2. Once you have a likely path, call `vault_read_file` to retrieve the needed content.\n"
-    "3. Synthesize a final answer in your own words. Do not dump raw tool output.\n"
-    "4. Only call a tool when its output is required to answer or to verify facts."
-) 

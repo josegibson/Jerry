@@ -1,1 +1,0 @@
-This is some random text added to the sample.md file.

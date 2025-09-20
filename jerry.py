@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Load .env as early as possible
 load_dotenv()
 
-from core.cli import MultiLLMCLI
+from core.__main__ import MultiLLMCLI
 
 
 def main():
