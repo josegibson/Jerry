@@ -1,1 +1,0 @@
-jerry projects init was comparatevel easy!
