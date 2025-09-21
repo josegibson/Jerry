@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import hashlib
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Dict
 
 from .agent_monitor import AgentMonitor
 
@@ -61,13 +61,16 @@ class VectorStoreManager:
             
         raise RuntimeError("No embedding backend available. Install langchain-openai or langchain-huggingface and set API keys.")
 
-    def add_documents_from_path(self, source_path: Path, glob_pattern: str = "**/*.md"):
+    def add_documents_from_path(self, source_path: Path, glob_pattern: str = "**/*.md") -> Dict[str, int]:
         """
         Loads, splits, and indexes all documents from a given path.
+        Returns a dictionary with statistics about the indexing process.
         """
         self.monitor.log_event("vector_store_debug", {"message": f"Indexing documents from '{source_path}'"})
+        
         docs: List[Document] = []
-        for file_path in source_path.glob(glob_pattern):
+        
+        for file_path in source_path.rglob(glob_pattern):
             if file_path.is_file():
                 try:
                     loader = TextLoader(str(file_path), encoding="utf-8")
@@ -77,7 +80,7 @@ class VectorStoreManager:
         
         if not docs:
             self.monitor.log_event("vector_store_debug", {"message": "No new documents found to index."})
-            return
+            return {"indexed_chunks": 0, "file_count": 0}
 
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=200)
         chunks = text_splitter.split_documents(docs)
@@ -88,11 +91,18 @@ class VectorStoreManager:
         ]
         
         self.db.add_documents(chunks, ids=ids)
-        self.monitor.log_event("vector_store_info", {
-            "message": f"Indexed {len(chunks)} chunks from {len(docs)} files.",
-            "chunk_count": len(chunks),
+        
+        stats = {
+            "indexed_chunks": len(chunks),
             "file_count": len(docs)
+        }
+        
+        self.monitor.log_event("vector_store_info", {
+            "message": f"Indexed {stats['indexed_chunks']} chunks from {stats['file_count']} files.",
+            **stats
         })
+        
+        return stats
 
     def get_retriever(self, top_k: int = 5) -> Any:
         """Returns a LangChain retriever for this agent's vector store."""

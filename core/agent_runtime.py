@@ -104,6 +104,10 @@ class AgentRuntime:
             "final_metrics": final_metrics
         }
 
+    def reindex_workspace(self) -> Dict[str, int]:
+        """Rescans the workspace and updates the knowledge base."""
+        return self.vector_store_manager.add_documents_from_path(self.workspace_dir)
+
     # ==========================================================================
     # --- INTERNAL & SETUP METHODS ---
     # ==========================================================================
