@@ -42,31 +42,80 @@ class AgentRuntime:
             self.config: Dict[str, Any] = json.load(f)
         self._load_state()
 
-        # --- NEW: Instantiate the agent's monitoring and logging utility ---
+        # --- Instantiate monitoring and logging --- 
         self.log_dir.mkdir(exist_ok=True)
         self.monitor = AgentMonitor(agent_name=self.config.get("name", "unnamed_agent"), log_dir=self.log_dir)
         self.monitor.log_event("agent_startup", {"config": self.config})
 
-
-        # --- NEW: Instantiate the agent's dedicated VectorStoreManager ---
+        # --- Instantiate the VectorStoreManager ---
         self.vector_store_manager = get_vector_store_manager(
             persist_directory=self.chroma_dir,
             collection_name=self.config.get("name", "default_agent_collection"),
             monitor=self.monitor
         )
         
-        # --- NEW: Index documents from the workspace on startup ---
+        # --- Index documents on startup ---
         self.vector_store_manager.add_documents_from_path(self.workspace_dir)
 
-        # Assemble and build the agent's graph on initialization
+        # --- Assemble the agent's graph ---
         self.graph = self._initialize_graph()
 
+    # ==========================================================================
+    # --- PUBLIC API METHODS ---
+    # ==========================================================================
 
+    def invoke(self, input_text: str) -> Dict[str, Any]:
+        """
+        Handles a single turn of the conversation.
+        """
+        self.state["messages"].append(HumanMessage(content=input_text))
+        
+        final_state = self.graph.invoke(self.state)
+        self.state = final_state
+        self.save_state()
+        
+        last_ai_message = next((m for m in reversed(final_state.get("messages", [])) if isinstance(m, AIMessage)), None)
+        response_text = last_ai_message.content if last_ai_message else "No response."
+        
+        return {
+            "response": response_text,
+            "tool_results": final_state.get("tool_results")
+        }
+
+    def analyze_knowledge_base(self) -> Dict[str, Any]:
+        """
+        Performs and returns an analysis of the agent's knowledge base.
+        """
+        return self.monitor.get_knowledge_base_analysis(self.workspace_dir, self.vector_store_manager)
+
+    def shutdown(self) -> Dict[str, Any]:
+        """
+        Performs all shutdown tasks for the agent.
+        """
+        self.monitor.log_event("agent_shutdown_start", {})
+        self._archive_session_as_markdown()
+        self._clear_persistent_state()
+        
+        final_metrics = self.monitor.get_token_metrics()
+        self.monitor.log_event("agent_shutdown_complete", {"final_token_metrics": final_metrics})
+        
+        return {
+            "message": "Session archived, state cleared, and final metrics logged.",
+            "final_metrics": final_metrics
+        }
+
+    # ==========================================================================
+    # --- INTERNAL & SETUP METHODS ---
+    # ==========================================================================
+
+    def _clear_persistent_state(self):
+        """Resets the persistent state file to an empty state."""
+        initial_state = {"messages": []}
+        with open(self.state_path, "w", encoding="utf-8") as f:
+            json.dump(initial_state, f, indent=2)
+        self.monitor.log_event("state_cleared", {"path": str(self.state_path)})
     def _initialize_graph(self):
-        """
-        Assembles all agent-specific components and uses the factory function
-        to build a ready-to-use LangGraph instance.
-        """
+        """Assembles the LangGraph instance."""
         self.monitor.log_event("graph_build_start", {"agent_name": self.config.get('name')})
         
         provider = ToolProvider(
@@ -90,7 +139,7 @@ class AgentRuntime:
         )
 
     def _load_state(self):
-        """Loads and deserializes the agent's persistent state from JSON."""
+        """Loads the agent's persistent state from JSON."""
         if self.state_path.exists():
             with open(self.state_path, "r", encoding="utf-8") as f:
                 state_data = json.load(f)
@@ -108,7 +157,7 @@ class AgentRuntime:
         with open(self.state_path, "w", encoding="utf-8") as f:
             json.dump(state_to_save, f, indent=2)
 
-    def archive_session_as_markdown(self):
+    def _archive_session_as_markdown(self):
         """Formats the current session's history into a Markdown file."""
         sessions_dir = self.workspace_dir / "sessions"
         sessions_dir.mkdir(exist_ok=True)
@@ -136,18 +185,13 @@ class AgentRuntime:
         self.monitor.log_event("session_archived", {"path": str(archive_path)})
 
     def get_retriever(self):
-        """
-        Returns a vectorstore retriever configured for this agent's Chroma DB
-        by calling the agent's own VectorStoreManager.
-        """
-        # CHANGE: This is now a simple pass-through call.
+        """Returns a vectorstore retriever for this agent."""
         return self.vector_store_manager.get_retriever(
             top_k=int(self.config.get("retrieve_top_k", 5))
         )
         
     def _create_new_agent_scaffold(self, name: str, provider: str, system_prompt: Optional[str]):
         """Creates the necessary files and directories for a new agent."""
-
         self.root_dir.mkdir(parents=True, exist_ok=True)
         self.workspace_dir.mkdir(exist_ok=True)
         self.chroma_dir.mkdir(exist_ok=True)
@@ -158,7 +202,7 @@ class AgentRuntime:
             "provider": provider,
             "system_prompt": system_prompt or "You are a helpful assistant.",
             "retrieve_top_k": 5,
-            "tools": ["file_tools", "knowledge_tools"] # Use tool group names
+            "tools": ["file_tools", "knowledge_tools"]
         }
         with open(self.config_path, "w", encoding="utf-8") as f:
             json.dump(config, f, indent=2)

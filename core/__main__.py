@@ -1,10 +1,8 @@
 import sys
 import dotenv
 import json
-from typing import Dict, Any
+from typing import Dict, Any, List, Optional
 import traceback
-
-from langchain_core.messages import HumanMessage, AIMessage
 
 from .agent_runtime import AgentRuntime
 
@@ -12,9 +10,8 @@ from .agent_runtime import AgentRuntime
 dotenv.load_dotenv()
 
 
-def _print_tool_results(state: Dict[str, Any]):
-    """Helper to print tool results if they exist in the state."""
-    tool_results = state.get("tool_results")
+def _print_tool_results(tool_results: Optional[List[Dict[str, Any]]]):
+    """Helper to print tool results if they exist."""
     if not tool_results:
         return
     
@@ -54,41 +51,38 @@ def run_cli(agent_dir: str):
         print("=" * 60)
     except Exception as e:
         print(f"❌ Error loading agent from '{agent_dir}': {e}")
+        traceback.print_exc()
         return
 
     while True:
         try:
-            user_input = input("\nYou: ").strip()
+            user_input = input("\n📝 You: ").strip()
 
-            if user_input.lower() in ['quit', 'exit', 'q']:
-                final_metrics = runtime.monitor.get_token_metrics()
-                runtime.monitor.log_event("agent_shutdown", {"final_token_metrics": final_metrics})
-                print("\nFinal session metrics logged.")
-                print("\n👋 Goodbye!")
-                break
-            if user_input.lower() == "!analyze":
-                print("\n🔬 Analyzing knowledge base...")
-                analysis = runtime.monitor.get_knowledge_base_analysis(runtime.workspace_dir, runtime.vector_store_manager)
-                print(json.dumps(analysis, indent=2))
-                continue
             if not user_input:
                 continue
 
-            runtime.state["messages"].append(HumanMessage(content=user_input))
-
-            print(f"\n{runtime.config.get('name')}: ", end="", flush=True)
-            final_state = runtime.graph.invoke(runtime.state)
+            # --- META COMMANDS ---
+            if user_input.lower() in ['quit', 'exit', 'q']:
+                print("\nShutting down and archiving session...")
+                shutdown_summary = runtime.shutdown()
+                print(shutdown_summary["message"])
+                print("\n👋 Goodbye!")
+                break
             
-            # Extract the last AI message from the clean final state
-            last_ai_message = next((m for m in reversed(final_state.get("messages", [])) if isinstance(m, AIMessage)), None)
-            response_text = last_ai_message.content if last_ai_message else "No response."
-            print(response_text)
-            # ----------------------------------------------------------------
+            if user_input.lower() == "!analyze":
+                print("\n🔬 Analyzing knowledge base...")
+                analysis = runtime.analyze_knowledge_base()
+                print(json.dumps(analysis, indent=2))
+                continue
+            
+            # --- AGENT INVOCATION ---
+            print(f"\n🤖 {runtime.config.get('name')}: ", end="", flush=True)
+            
+            turn_output = runtime.invoke(user_input)
+            
+            print(turn_output["response"])
 
-            runtime.state = final_state
-            runtime.save_state()
-
-            _print_tool_results(final_state)
+            _print_tool_results(turn_output["tool_results"])
             _track_and_print_token_usage(runtime)
 
         except KeyboardInterrupt:
@@ -104,7 +98,6 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         run_cli(sys.argv[1])
     else:
-        # Corrected usage message for clarity
         print("Usage: python -m core <path_to_agent_directory>")
         print("Example: python -m core ./my-first-agent")
 
