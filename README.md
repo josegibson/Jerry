@@ -1,21 +1,27 @@
 # Jerry: A Modular, Multi-Agent AI Framework
 
-Jerry is a Python-based framework for building and managing multiple, independent AI agents. The core architectural principle is that each agent is a self-contained unit, living within its own directory. This design provides a clean separation of concerns, allowing each agent to have its own persistent memory, knowledge base, tools, and configuration.
+Jerry is a Python-based framework for building and managing multiple, independent AI agents. The core architectural principle is that each agent is a self-contained unit, living within its own directory. This design provides a clean separation of concerns, allowing each agent to have its own knowledge base, tools, and configuration.
 
 Powered by LangChain and LangGraph, Jerry provides a robust foundation for creating sophisticated, tool-using AI assistants that can reason, retrieve information, and interact with a local file system.
 
+## Design Philosophy
 
+The framework is designed with a strict separation between the core agent logic and the user interface. 
 
+- **`AgentRuntime`**: This class, located in `core/agent_runtime.py`, encapsulates all of the agent's core functionality, including state management, graph invocation, and lifecycle events like startup and shutdown. It provides a clean, high-level API (`invoke`, `shutdown`, etc.) and has no knowledge of the user interface.
+- **`__main__.py`**: This acts as a pure command-line interface (CLI). Its sole responsibility is to accept user input, call the appropriate methods on the `AgentRuntime`, and present the results to the user. 
+
+This decoupled architecture makes the system highly maintainable and allows for the easy creation of new interfaces (e.g., a web UI, a Discord bot) by simply building a new view layer on top of the existing `AgentRuntime`.
 
 ## Core Features
 
-* **Directory-Scoped Agents**: Each agent is an independent entity defined by a directory, containing its own configuration, long-term memory, and a dedicated vector store.
-* **Retrieval-Augmented Generation (RAG)**: Agents automatically index Markdown files within their `workspace` directory into a ChromaDB vector store, allowing them to answer questions based on a private knowledge base.
-* **Persistent Conversations**: Chat history is automatically saved and loaded, allowing you to resume conversations with an agent at any time.
+* **Directory-Scoped Agents**: Each agent is an independent entity defined by a directory, containing its own configuration and a dedicated vector store.
+* **Ephemeral Sessions**: To ensure clean, repeatable interactions, each time you run an agent is a new session. The agent's conversational memory is cleared upon shutdown.
+* **Session Archiving**: On shutdown, a complete, human-readable Markdown transcript of the conversation is automatically saved to the `workspace/sessions/` directory, named with a timestamp.
+* **Retrieval-Augmented Generation (RAG)**: Agents automatically index Markdown files within their `workspace/` directory into a ChromaDB vector store. This allows them to answer questions based on a private knowledge base, while intelligently ignoring archived session files.
 * **Extensible Tool System**: A `ToolProvider` architecture makes it easy to grant agents new capabilities, such as file system access (`file_tools`), knowledge retrieval (`knowledge_tools`), and web search.
 * **Pluggable Backends**: Easily switch between LLM providers (e.g., Gemini, OpenAI) and embedding models (e.g., OpenAI, HuggingFace) via environment variables.
-* **Monitoring & Logging**: A built-in `AgentMonitor` tracks token usage, logs important events, and provides tools to analyze an agent's knowledge base.
-
+* **Structured Logging**: A built-in `AgentMonitor` tracks token usage and logs all major events (graph execution, tool calls, errors) to a structured JSON log file in the agent's `logs/` directory.
 
 ## Getting Started
 
@@ -32,7 +38,7 @@ Clone the repository and install the required dependencies:
 git clone <your-repo-url>
 cd <your-repo-directory>
 pip install -r requirements.txt
-````
+```
 
 ### 3. Configuration
 
@@ -54,7 +60,7 @@ OPENAI_API_KEY="your-openai-api-key"
 # SENTENCE_TRANSFORMERS_MODEL="all-MiniLM-L6-v2"
 ```
 
-### 4\. Creating and Running Your First Agent
+### 4. Creating and Running Your First Agent
 
 The framework is designed to be run as a module from the root of the project. To create a new agent, simply provide a path to a directory that doesn't exist yet. The framework will automatically scaffold it for you.
 
@@ -80,18 +86,21 @@ Once an agent is running, you can interact with it through the command-line inte
 
 Simply type your message and press Enter.
 
-```
-📝 You: Can you list all files in a directory?
-```
-
 ### Special Commands
 
-  * `quit`, `exit`, `q`: Shuts down the agent and saves the final session metrics.
-  * `!analyze`: Performs an analysis of the agent's knowledge base, showing file counts, token estimates, and vector store statistics.
+The CLI now supports a range of commands prefixed with `/` for agent management and interaction. The terminal experience is enhanced with rich text formatting and syntax highlighting provided by the `rich` library.
+
+  * `/quit`, `/exit`, `/q`: Shuts down the agent, archives the conversation to a Markdown file, and clears the session state for the next run.
+  * `/analyze`: Performs an analysis of the agent's knowledge base, showing file counts, token estimates, and vector store statistics.
+  * `/ingest`: Rescans the workspace and ingests new or updated documents into the agent's knowledge base.
+  * `/history`: Displays the full conversation history for the current session.
+  * `/config`: Shows the agent's current configuration.
+  * `/clear`: Clears the console screen.
+  * `/help`: Displays a list of all available commands and their descriptions.
 
 ### Adding Knowledge
 
-To give your agent new knowledge, simply create or copy `.md` (Markdown) files into its `workspace` subdirectory (e.g., `./my-first-agent/workspace/`). The agent will automatically detect and index these files the next time it starts, making their content available for retrieval.
+To give your agent new knowledge, simply create or copy `.md` (Markdown) files into its `workspace/` subdirectory (e.g., `./my-first-agent/workspace/`). The agent will automatically detect and index these files the next time it starts.
 
 -----
 
@@ -103,11 +112,12 @@ When you create an agent, the following structure is generated:
 
 ```
 my-first-agent/
-├── .chroma/              # Sandboxed ChromaDB vector store
-├── .agent_state.json     # Serialized conversation history
+├── .chroma/              # Sandboxed ChromaDB vector store for long-term knowledge
+├── .agent_state.json     # Ephemeral conversation history (cleared on shutdown)
 ├── logs/                 # Agent-specific operational logs
 │   └── agent_my-first-agent.log
 ├── workspace/            # Your private knowledge base (add .md files here)
+│   └── sessions/         # Contains archived Markdown transcripts of past conversations
 └── agent.json            # The agent's configuration file
 ```
 
@@ -127,8 +137,4 @@ This file defines the agent's core properties. You can edit it to change the age
     "web_search_tools"
   ]
 }
-```
-
-This modular design allows you to create and maintain a diverse ecosystem of specialized AI agents, each tailored to a specific task or domain.
-
 ```

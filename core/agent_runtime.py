@@ -104,9 +104,28 @@ class AgentRuntime:
             "final_metrics": final_metrics
         }
 
+    def get_config(self) -> Dict[str, Any]:
+        """Returns the agent's configuration dictionary."""
+        return self.config
+
     def reindex_workspace(self) -> Dict[str, int]:
         """Rescans the workspace and updates the knowledge base."""
         return self.vector_store_manager.add_documents_from_path(self.workspace_dir)
+
+    def get_session_history(self) -> str:
+        """Returns a formatted string of the current session's history."""
+        if not self.state.get("messages"):
+            return "No messages in this session yet."
+        
+        history_str = "" 
+        for msg in self.state["messages"]:
+            if isinstance(msg, HumanMessage):
+                history_str += f"\n--- You ---\n{msg.content}"
+            elif isinstance(msg, AIMessage):
+                history_str += f"\n--- Agent ---\n{msg.content}"
+            elif isinstance(msg, ToolMessage):
+                history_str += f"\n--- Tool Output ({msg.tool_call_id}) ---\n{msg.content}"
+        return history_str
 
     # ==========================================================================
     # --- INTERNAL & SETUP METHODS ---
@@ -118,6 +137,7 @@ class AgentRuntime:
         with open(self.state_path, "w", encoding="utf-8") as f:
             json.dump(initial_state, f, indent=2)
         self.monitor.log_event("state_cleared", {"path": str(self.state_path)})
+    
     def _initialize_graph(self):
         """Assembles the LangGraph instance."""
         self.monitor.log_event("graph_build_start", {"agent_name": self.config.get('name')})
