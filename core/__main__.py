@@ -1,5 +1,6 @@
 import sys
 import dotenv
+import json
 from typing import Dict, Any
 import traceback
 
@@ -28,40 +29,17 @@ def _print_tool_results(state: Dict[str, Any]):
     print("─" * 56)
 
 
-def _print_token_usage(state: Dict[str, Any]):
-    """Helper to print token usage details."""
-    last_usage = state.get("last_token_usage", {}) or {}
-    session_usage = state.get("session_token_usage", {}) or {}
-    print(
-        f"📊 Tokens (last): "
-        f"In={last_usage.get('input', 0)}, "
-        f"Out={last_usage.get('output', 0)}, "
-        f"Total={last_usage.get('total', 0)}"
-    )
+def _track_and_print_token_usage(runtime: AgentRuntime):
+    """Prints the session's token usage details."""
+    token_metrics = runtime.monitor.get_token_metrics()
+    session_usage = token_metrics.get("session_total", {})
+
     print(
         f"📈 Tokens (session): "
         f"In={session_usage.get('input', 0)}, "
         f"Out={session_usage.get('output', 0)}, "
-        f"Total={session_usage.get('total', 0)} | "
-        f"Turns={session_usage.get('count', 0)}"
+        f"Total={session_usage.get('total', 0)}"
     )
-
-
-def _summarize_messages(prefix: str, messages: Any) -> None:
-    try:
-        recent = list(messages)[-5:]
-        print(f"[DBG] {prefix}: total={len(messages)}")
-        for i, m in enumerate(recent):
-            mtype = getattr(m, "type", m.__class__.__name__)
-            has_tools = bool(getattr(m, "tool_calls", []))
-            preview = getattr(m, "content", "")
-            if isinstance(preview, str):
-                preview = preview.replace("\n", " ")
-                if len(preview) > 80:
-                    preview = preview[:77] + "..."
-            print(f"[DBG]   {len(messages)-len(recent)+i}: type={mtype}, has_tool_calls={has_tools} | {preview}")
-    except Exception:
-        pass
 
 
 def run_cli(agent_dir: str):
@@ -80,20 +58,26 @@ def run_cli(agent_dir: str):
 
     while True:
         try:
-            user_input = input("\n📝 You: ").strip()
+            user_input = input("\nYou: ").strip()
 
             if user_input.lower() in ['quit', 'exit', 'q']:
+                final_metrics = runtime.monitor.get_token_metrics()
+                runtime.monitor.log_event("agent_shutdown", {"final_token_metrics": final_metrics})
+                print("\nFinal session metrics logged.")
                 print("\n👋 Goodbye!")
                 break
+            if user_input.lower() == "!analyze":
+                print("\n🔬 Analyzing knowledge base...")
+                analysis = runtime.monitor.get_knowledge_base_analysis(runtime.workspace_dir, runtime.vector_store_manager)
+                print(json.dumps(analysis, indent=2))
+                continue
             if not user_input:
                 continue
 
             runtime.state["messages"].append(HumanMessage(content=user_input))
-            _summarize_messages("pre-invoke messages", runtime.state.get("messages", []))
 
-            print(f"\n🤖 {runtime.config.get('name')}: ", end="", flush=True)
+            print(f"\n{runtime.config.get('name')}: ", end="", flush=True)
             final_state = runtime.graph.invoke(runtime.state)
-            _summarize_messages("post-invoke messages", final_state.get("messages", []))
             
             # Extract the last AI message from the clean final state
             last_ai_message = next((m for m in reversed(final_state.get("messages", [])) if isinstance(m, AIMessage)), None)
@@ -102,21 +86,18 @@ def run_cli(agent_dir: str):
             # ----------------------------------------------------------------
 
             runtime.state = final_state
-            runtime.save_state()  # This will now work correctly
+            runtime.save_state()
 
             _print_tool_results(final_state)
-            _print_token_usage(final_state)
+            _track_and_print_token_usage(runtime)
 
         except KeyboardInterrupt:
             print("\n\n👋 Goodbye!")
             break
         except Exception as e:
+            runtime.monitor.log_event("error", {"message": str(e), "traceback": traceback.format_exc()})
             print(f"\n❌ An unexpected error occurred: {e}")
             traceback.print_exc()
-            try:
-                _summarize_messages("on-exception messages", runtime.state.get("messages", []))
-            except Exception:
-                pass
 
 
 if __name__ == "__main__":
