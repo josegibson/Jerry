@@ -56,6 +56,11 @@ def _run_agent_shell(runtime: AgentRuntime, agent_name: str):
             user_input = console.input(f"\n[bold green]{agent_name}>[/bold green] ").strip()
             if not user_input: continue
             if user_input.lower() == 'exit': break
+
+            if agent_name == 'jerry':
+                agent.addJournalEntry(user_input)
+                console.print(f"[bold green]Journal entry added.[/bold green]")
+                continue
             
             _, method_name, args = _parse_command(user_input)
 

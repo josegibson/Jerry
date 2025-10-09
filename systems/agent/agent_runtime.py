@@ -86,16 +86,13 @@ class AgentRuntime:
                     self.monitor.log_event("runtime_error", "system_discovery_failed", {"path": str(manifest_path), "error": str(e)})
 
     def _get_system_instance(self, system_name: str) -> Any:
-        """Lazily initializes and returns a system instance."""
-        # Return already initialized instance if available
+        """Lazily initializes and returns a singleton system instance."""
         if system_name in self._initialized_systems:
             return self._initialized_systems[system_name]
 
-        # Check if the system is in our registry
         if system_name not in self.systems_registry:
             raise ValueError(f"System '{system_name}' not found in registry.")
 
-        # Dynamically import and initialize
         system_meta = self.systems_registry[system_name]
         module_path = system_meta["module_path"]
         class_name = system_meta["class_name"]
@@ -103,17 +100,7 @@ class AgentRuntime:
         try:
             module = importlib.import_module(module_path)
             system_class = getattr(module, class_name)
-            
-            # For now, we hardcode the dependencies for the known systems.
-            if system_name == "database_system":
-                agent_data_dir = self.root_dir / "_agent_data"
-                agent_data_dir.mkdir(exist_ok=True)
-                instance = system_class(monitor=self.monitor, db_path=str(agent_data_dir / "system.db"))
-            elif system_name == "file_system":
-                instance = system_class(monitor=self.monitor, root_dir=self.root_dir)
-            else:
-                instance = system_class(monitor=self.monitor)
-
+            instance = system_class(monitor=self.monitor)
             self._initialized_systems[system_name] = instance
             return instance
         except (ImportError, AttributeError) as e:
@@ -135,9 +122,28 @@ class AgentRuntime:
         with open(manifest_path, 'r') as f:
             agent_manifest = json.load(f)
 
-        # Initialize only the systems the agent requires
+        # Prepare agent-specific directories
+        agent_dir = self.agents_dir / agent_name
+        agent_data_dir = agent_dir / "data"
+        agent_data_dir.mkdir(exist_ok=True)
+
+        # Initialize systems
         required_systems = agent_manifest.get("capabilities_required", [])
-        agent_systems = {sys_name: self._get_system_instance(sys_name) for sys_name in required_systems}
+        agent_systems = {}
+        for sys_name in required_systems:
+            system_meta = self.systems_registry[sys_name]
+            module_path = system_meta["module_path"]
+            class_name = system_meta["class_name"]
+            module = importlib.import_module(module_path)
+            system_class = getattr(module, class_name)
+
+            if sys_name == "database_system":
+                instance = system_class(monitor=self.monitor, db_path=str(agent_data_dir / "system.db"))
+            elif sys_name == "file_system":
+                instance = system_class(monitor=self.monitor, root_dir=agent_dir)
+            else:
+                instance = self._get_system_instance(sys_name)
+            agent_systems[sys_name] = instance
         
         # Add monitor by default, but don't proxy it
         # agent_systems["monitor"] = self.monitor 
