@@ -1,17 +1,16 @@
-from systems.agent.agent_runtime import Agent, AgentContext
+from systems.agent.agent_system import AgentSystem
 
-class JerryAgent(Agent):
+class JerryAgent(AgentSystem):
     """
     Jerry is the primary agent for interacting with the user.
     """
-    def __init__(self, context: AgentContext):
+    def __init__(self, context):
         super().__init__(context)
+        # uses context.entries_db provided by the runtime
 
     def addJournalEntry(self, text: str):
         """
-        Adds a journal entry to the database and publishes an event.
+        Adds a journal entry to the database.
         """
-        entry = {"id": text[:20], "content": text} # simple id for now
-        self.context.database_system.saveRecord("entries", entry)
-        self.context.event_bus.publish("NewJournalEntry", {"content": text})
+        entry_id = self.save_entry(text)
         print("[Jerry] Saved new journal entry.")
