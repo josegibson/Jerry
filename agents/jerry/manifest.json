@@ -4,8 +4,6 @@
     "module_path": "agents.jerry.logic",
     "class_name": "JerryAgent",
     "capabilities_required": [
-        "database_system",
-        "file_system",
-        "event_bus"
+        "file_system"
     ]
 }
