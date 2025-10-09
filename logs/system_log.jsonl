@@ -1,9 +1,19 @@
-{"timestamp": "2025-10-09T12:50:58.993545", "agent_name": "system", "event_type": "vector_db_debug", "data": {"message": "Selected OpenAI embeddings: text-embedding-3-small"}}
-{"timestamp": "2025-10-09T12:51:30.888649", "agent_name": "system", "event_type": "vector_db_debug", "data": {"message": "Selected OpenAI embeddings: text-embedding-3-small"}}
-{"timestamp": "2025-10-09T12:51:31.868527", "agent_name": "system", "event_type": "agent_loaded", "data": {"agent_name": "jerry"}}
-{"timestamp": "2025-10-09T12:53:53.275213", "agent_name": "system", "event_type": "runtime_shutdown", "data": {}}
-{"timestamp": "2025-10-09T12:54:00.092278", "agent_name": "system", "event_type": "vector_db_debug", "data": {"message": "Selected OpenAI embeddings: text-embedding-3-small"}}
-{"timestamp": "2025-10-09T12:58:12.375464", "agent_name": "system", "event_type": "agent_loaded", "data": {"agent_name": "conrad"}}
-{"timestamp": "2025-10-09T12:58:40.824828", "agent_name": "system", "event_type": "runtime_shutdown", "data": {}}
-{"timestamp": "2025-10-09T12:58:43.212788", "agent_name": "system", "event_type": "agent_loaded", "data": {"agent_name": "jerry"}}
-{"timestamp": "2025-10-09T12:59:30.236297", "agent_name": "system", "event_type": "runtime_shutdown", "data": {}}
+{"timestamp": "2025-10-09T16:34:02.570945", "source": "system_databasesystem", "event_type": "initialized", "data": {}}
+{"timestamp": "2025-10-09T16:34:02.573904", "source": "system_databasesystem", "event_type": "initialized", "data": {"db_path": "D:\\Jerry\\_agent_data\\system.db"}}
+{"timestamp": "2025-10-09T16:34:30.651536", "source": "runtime", "event_type": "shutdown", "data": {}}
+{"timestamp": "2025-10-09T16:35:57.694571", "source": "system_databasesystem", "event_type": "initialized", "data": {}}
+{"timestamp": "2025-10-09T16:35:57.694995", "source": "system_databasesystem", "event_type": "initialized", "data": {"db_path": "D:\\Jerry\\_agent_data\\system.db"}}
+{"timestamp": "2025-10-09T16:35:57.696979", "source": "system_filesystem", "event_type": "initialized", "data": {}}
+{"timestamp": "2025-10-09T16:37:20.948339", "source": "runtime", "event_type": "shutdown", "data": {}}
+{"timestamp": "2025-10-09T16:37:24.433119", "source": "system_databasesystem", "event_type": "initialized", "data": {}}
+{"timestamp": "2025-10-09T16:37:24.433524", "source": "system_databasesystem", "event_type": "initialized", "data": {"db_path": "D:\\Jerry\\_agent_data\\system.db"}}
+{"timestamp": "2025-10-09T16:37:24.434472", "source": "system_filesystem", "event_type": "initialized", "data": {}}
+{"timestamp": "2025-10-09T16:37:24.435738", "source": "system_eventbussystem", "event_type": "initialized", "data": {}}
+{"timestamp": "2025-10-09T16:37:24.438889", "source": "runtime_error", "event_type": "agent_load_failed", "data": {"agent": "jerry", "error": "No module named 'core'"}}
+{"timestamp": "2025-10-09T16:37:38.872172", "source": "runtime", "event_type": "shutdown", "data": {}}
+{"timestamp": "2025-10-09T16:37:41.293029", "source": "system_databasesystem", "event_type": "initialized", "data": {}}
+{"timestamp": "2025-10-09T16:37:41.293467", "source": "system_databasesystem", "event_type": "initialized", "data": {"db_path": "D:\\Jerry\\_agent_data\\system.db"}}
+{"timestamp": "2025-10-09T16:37:41.295084", "source": "system_filesystem", "event_type": "initialized", "data": {}}
+{"timestamp": "2025-10-09T16:37:41.298051", "source": "system_eventbussystem", "event_type": "initialized", "data": {}}
+{"timestamp": "2025-10-09T16:37:41.318276", "source": "runtime", "event_type": "agent_loaded", "data": {"agent_name": "jerry"}}
+{"timestamp": "2025-10-09T16:38:12.059473", "source": "runtime", "event_type": "shutdown", "data": {}}

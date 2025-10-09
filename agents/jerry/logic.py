@@ -1,4 +1,4 @@
-from core.agent.agent_runtime import Agent, AgentContext
+from systems.agent.agent_runtime import Agent, AgentContext
 
 class JerryAgent(Agent):
     """
@@ -13,5 +13,5 @@ class JerryAgent(Agent):
         """
         entry = {"id": text[:20], "content": text} # simple id for now
         self.context.db.saveRecord("entries", entry)
-        # self.context.event_bus.publish("NewJournalEntry", {"content": text})
+        self.context.event_bus.publish("NewJournalEntry", {"content": text})
         print("[Jerry] Saved new journal entry.")

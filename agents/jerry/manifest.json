@@ -5,6 +5,7 @@
     "class_name": "JerryAgent",
     "capabilities_required": [
         "database_system",
-        "file_system"
+        "file_system",
+        "event_bus"
     ]
 }

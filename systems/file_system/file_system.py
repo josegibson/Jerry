@@ -2,19 +2,23 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-class FileSystem:
+from systems.base_system import BaseSystem
+from systems.dev_monitor.dev_monitor import DevMonitor
+
+class FileSystem(BaseSystem):
     """
     A system for interacting with the file system within a sandboxed workspace.
     """
 
-    def __init__(self, workspace_path: Path):
+    def __init__(self, monitor: DevMonitor, root_dir: Path):
         """
         Initializes the FileSystem with a specific workspace directory.
 
         Args:
             workspace_path: The root directory for all file operations.
         """
-        self.workspace_path = workspace_path
+        super().__init__(monitor)
+        self.workspace_path = root_dir
         self.workspace_path.mkdir(parents=True, exist_ok=True)
 
     def _get_safe_path(self, rel_path: str) -> Path:

@@ -104,7 +104,6 @@ class AgentRuntime:
             module = importlib.import_module(module_path)
             system_class = getattr(module, class_name)
             
-            # TODO: This configuration part needs to be made more robust.
             # For now, we hardcode the dependencies for the known systems.
             if system_name == "database_system":
                 agent_data_dir = self.root_dir / "_agent_data"
