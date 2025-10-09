@@ -1,13 +1,13 @@
-from core.agent.agent_runtime import Agent
+from core.agent.agent_runtime import Agent, AgentContext
 
 class ConradAgent(Agent):
     """
     Conrad is an agent that listens for events and provides analysis.
     """
-    def __init__(self, agent_runtime):
-        super().__init__(agent_runtime)
+    def __init__(self, context: AgentContext):
+        super().__init__(context)
         print("[Conrad] NOTE: EventBus is currently disconnected.")
-        # self.runtime.systems["event_bus"].subscribe("NewJournalEntry", self.onNewJournalEntry)
+        # self.context.event_bus.subscribe("NewJournalEntry", self.onNewJournalEntry)
 
     def onNewJournalEntry(self, payload: dict):
         """
