@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, List
 
-from langchain_core.tools import BaseTool
+from langchain_core.tools import BaseTool, tool # Import 'tool' decorator
 
 from .agent_monitor import AgentMonitor
 
@@ -14,6 +14,9 @@ from core.tools.knowledge_tools import create_knowledge_tools
 # --- Stateless tools can be imported as they are ---
 from core.tools.web_search_tools import web_search
 
+# --- Import Planner Module and its tools ---
+from planner.planner_module import PlannerModule # Assuming planner is at project root
+from core.tools import planner_tools # Import the module
 
 class ToolProvider:
     """
@@ -34,10 +37,29 @@ class ToolProvider:
         self.retriever = retriever
         self.monitor = monitor
 
+        # --- Initialize Planner Module and its tools ---
+        # The planner_data.json will be in the top-level 'planner' directory
+        planner_data_path = self.workspace_path.parent.parent / "planner" / "planner_data.json"
+        planner_data_path.parent.mkdir(parents=True, exist_ok=True) # Ensure planner directory exists
+        self.planner_module = PlannerModule(planner_data_path)
+        planner_tools.initialize_planner_tools(self.planner_module)
+
+        # Helper to wrap a function as a LangChain tool
+        def _wrap_as_tool(func):
+            return tool(func)
+
         self._tool_registry = {
             "file_tools": lambda: create_file_tools(self.workspace_path),
             "knowledge_tools": lambda: create_knowledge_tools(self.retriever),
             "web_search_tools": lambda: [web_search],
+            "planner_tools": lambda: [
+                _wrap_as_tool(planner_tools.add_planner_task),
+                _wrap_as_tool(planner_tools.get_planner_due_tasks),
+                _wrap_as_tool(planner_tools.mark_planner_task_completed),
+                _wrap_as_tool(planner_tools.mark_planner_task_failed),
+                _wrap_as_tool(planner_tools.mark_planner_task_cancelled),
+                _wrap_as_tool(planner_tools.update_planner_task),
+            ],
         }
 
     def get_tools(self, requested_tools: List[str]) -> List[BaseTool]:
