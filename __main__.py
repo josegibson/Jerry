@@ -7,6 +7,7 @@ from pathlib import Path
 from rich.console import Console
 
 from systems.assembler.agent_assembler import AgentAssembler
+from systems.runtime.agent_host import AgentHost
 
 # --- Configuration ---
 dotenv.load_dotenv()
@@ -43,51 +44,23 @@ def _parse_command(user_input: str):
 # --- Shell Implementations (largely unchanged) ---
 
 def _run_agent_shell(runtime, agent_name: str):
-    """Runs an interactive shell for a single, pre-loaded agent."""
+    """Runs an interactive shell for a single, pre-loaded agent using AgentHost."""
     agent = runtime.get_agent(agent_name)
     if not agent:
         console.print(f"[bold red]Agent '{agent_name}' could not be loaded.[/bold red]")
         return
 
-    console.print(f"✅ Agent Shell for [bold green]'{agent_name}'[/bold green] is ready. Type 'help' or 'exit'.")
-    
-    while True:
-        try:
-            user_input = console.input(f"\n[bold green]{agent_name}>[/bold green] ").strip()
-            if not user_input: continue
-            if user_input.lower() == 'exit': break
-
-            if agent_name == 'jerry':
-                agent.addJournalEntry(user_input)
-                console.print(f"[bold green]Journal entry added.[/bold green]")
-                continue
-            
-            _, method_name, args = _parse_command(user_input)
-
-            if user_input.lower() == 'help':
-                console.print(f"\n[bold underline]Available commands for {agent_name}:[/bold underline]")
-                for name, method in inspect.getmembers(agent, predicate=inspect.ismethod):
-                    if not name.startswith('_') and not name == '__init__':
-                        doc = inspect.getdoc(method) or "No description."
-                        console.print(f"  [cyan]{name}[/cyan]: {doc.strip().split('\n')[0]}")
-                continue
-
-            method = getattr(agent, method_name, None)
-            if not callable(method):
-                console.print(f"[bold red]Unknown command: '{method_name}'. Type 'help' for available commands.[/bold red]")
-                continue
-
-            result = method(*args)
-            if result is not None:
-                console.print(result)
-
-        except Exception as e:
-            console.print(f"[bold red]❌ Error executing command: {e}[/bold red]")
+    host = AgentHost(agent, console)
+    host.start()
+    try:
+        host.run_cli(agent_name)
+    finally:
+        host.stop()
 
 def _run_system_shell(runtime):
     """Runs the main system shell for multi-agent interaction."""
     console.print("✅ System Shell is ready. Type 'exit' to quit.")
-    console.print("   Example: jerry.addJournalEntry(\"Today I worked on the POC.\")")
+    console.print("   Example: jerry.save_entry(\"Today I worked on the POC.\")")
 
     while True:
         try:

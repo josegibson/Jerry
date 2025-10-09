@@ -1,8 +1,8 @@
 {
     "agent_name": "jerry",
     "description": "The foundational agent.",
-    "module_path": "agents.jerry.logic",
-    "class_name": "JerryAgent",
+    "module_path": "systems.agent.agent_system",
+    "class_name": "AgentSystem",
     "capabilities_required": [
         "file_system"
     ]

@@ -1,4 +1,4 @@
-import sys
+import argparse
 from pathlib import Path
 from rich.console import Console
 
@@ -7,15 +7,20 @@ from systems.runtime.agent_host import AgentHost
 
 
 def main():
-	console = Console()
+	parser = argparse.ArgumentParser(description="Run an agent by name using its manifest")
+	parser.add_argument("agent", help="Agent name (directory name under agents/) to run")
+	args = parser.parse_args()
 
-	# Resolve project root as the repository root (two levels up from this file)
+	console = Console()
 	project_root = str(Path(__file__).resolve().parents[2])
 
 	assembler = AgentAssembler(project_root)
-	agent_name = "jerry"
+	agent_name = args.agent.lower()
+
+	# Load the agent via its manifest
 	agent = assembler.load_agent(agent_name)
 
+	# Host runtime and CLI
 	host = AgentHost(agent, console)
 	host.start()
 	try:

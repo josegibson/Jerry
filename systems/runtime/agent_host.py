@@ -30,7 +30,7 @@ class AgentHost:
 					break
 
 				# Delegate to the agent's method
-				self.agent.addJournalEntry(user_input)
+				self.agent.save_entry(user_input)
 				self.console.print("[bold green]Journal entry added.[/bold green]")
 			except KeyboardInterrupt:
 				break
