@@ -6,7 +6,7 @@ import inspect
 from pathlib import Path
 from rich.console import Console
 
-from systems.agent.agent_runtime import AgentRuntime
+from systems.assembler.agent_assembler import AgentAssembler
 
 # --- Configuration ---
 dotenv.load_dotenv()
@@ -42,7 +42,7 @@ def _parse_command(user_input: str):
 
 # --- Shell Implementations (largely unchanged) ---
 
-def _run_agent_shell(runtime: AgentRuntime, agent_name: str):
+def _run_agent_shell(runtime, agent_name: str):
     """Runs an interactive shell for a single, pre-loaded agent."""
     agent = runtime.get_agent(agent_name)
     if not agent:
@@ -84,7 +84,7 @@ def _run_agent_shell(runtime: AgentRuntime, agent_name: str):
         except Exception as e:
             console.print(f"[bold red]❌ Error executing command: {e}[/bold red]")
 
-def _run_system_shell(runtime: AgentRuntime):
+def _run_system_shell(runtime):
     """Runs the main system shell for multi-agent interaction."""
     console.print("✅ System Shell is ready. Type 'exit' to quit.")
     console.print("   Example: jerry.addJournalEntry(\"Today I worked on the POC.\")")
@@ -94,6 +94,7 @@ def _run_system_shell(runtime: AgentRuntime):
             user_input = console.input("\n[bold green]>[/bold green] ").strip()
             if not user_input: continue
             if user_input.lower() == 'exit': break
+            # monitor commands removed
 
             agent_name, method_name, args = _parse_command(user_input)
 
@@ -131,7 +132,7 @@ def main(agent: str = typer.Option(None, "--agent", help="Start a shell for a sp
     agents_dir = Path(project_root) / "agents"
     
     try:
-        runtime = AgentRuntime(project_root)
+        runtime = AgentAssembler(project_root)
         
         # Discover available agents by looking for manifest.json files
         available_agents = [d.name for d in agents_dir.iterdir() if d.is_dir() and (d / 'manifest.json').is_file()]
