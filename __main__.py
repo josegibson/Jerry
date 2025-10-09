@@ -1,52 +1,46 @@
+
 import sys
 import dotenv
 import typer
 import inspect
+from pathlib import Path
 from rich.console import Console
 
-from core.agent.agent_runtime import AgentRuntime
-from agents.jerry import JerryAgent
-from agents.conrad import ConradAgent
+from systems.agent.agent_runtime import AgentRuntime
 
 # --- Configuration ---
 dotenv.load_dotenv()
 console = Console()
-AGENT_CLASSES = {
-    "jerry": JerryAgent,
-    "conrad": ConradAgent,
-}
 
-# --- Helper Functions ---
+# --- Helper Functions (largely unchanged) ---
 
 def _parse_command(user_input: str):
     """Parses 'method(args)' or 'agent.method(args)'."""
     try:
-        # Split agent/method from args
         command_part, args_part = user_input.split('(', 1)
-        
-        # Extract args string
         if not args_part.endswith(')'):
             return None, None, None
         arg_str = args_part[:-1]
 
-        # Parse agent and method
         if '.' in command_part:
             agent_name, method_name = command_part.split('.', 1)
         else:
             agent_name, method_name = None, command_part
 
-        # Rudimentary arg parsing (handles a single string)
         args = []
         if arg_str:
+            # This simple parsing handles a single string argument.
+            # It can be improved to handle multiple args, numbers, etc.
             if arg_str.startswith('"') and arg_str.endswith('"'):
                 args.append(arg_str[1:-1])
-            # TODO: Add other types like numbers if needed
+            else:
+                args.append(arg_str) # Treat as a single value
         
         return agent_name, method_name, args
     except ValueError:
         return None, None, None
 
-# --- Shell Implementations ---
+# --- Shell Implementations (largely unchanged) ---
 
 def _run_agent_shell(runtime: AgentRuntime, agent_name: str):
     """Runs an interactive shell for a single, pre-loaded agent."""
@@ -60,17 +54,15 @@ def _run_agent_shell(runtime: AgentRuntime, agent_name: str):
     while True:
         try:
             user_input = console.input(f"\n[bold green]{agent_name}>[/bold green] ").strip()
-            if not user_input:
-                continue
-            if user_input.lower() == 'exit':
-                break
+            if not user_input: continue
+            if user_input.lower() == 'exit': break
             
             _, method_name, args = _parse_command(user_input)
 
             if user_input.lower() == 'help':
                 console.print(f"\n[bold underline]Available commands for {agent_name}:[/bold underline]")
                 for name, method in inspect.getmembers(agent, predicate=inspect.ismethod):
-                    if not name.startswith('_'):
+                    if not name.startswith('_') and not name == '__init__':
                         doc = inspect.getdoc(method) or "No description."
                         console.print(f"  [cyan]{name}[/cyan]: {doc.strip().split('\n')[0]}")
                 continue
@@ -80,7 +72,9 @@ def _run_agent_shell(runtime: AgentRuntime, agent_name: str):
                 console.print(f"[bold red]Unknown command: '{method_name}'. Type 'help' for available commands.[/bold red]")
                 continue
 
-            method(*args)
+            result = method(*args)
+            if result is not None:
+                console.print(result)
 
         except Exception as e:
             console.print(f"[bold red]❌ Error executing command: {e}[/bold red]")
@@ -93,10 +87,8 @@ def _run_system_shell(runtime: AgentRuntime):
     while True:
         try:
             user_input = console.input("\n[bold green]>[/bold green] ").strip()
-            if not user_input:
-                continue
-            if user_input.lower() == 'exit':
-                break
+            if not user_input: continue
+            if user_input.lower() == 'exit': break
 
             agent_name, method_name, args = _parse_command(user_input)
 
@@ -114,11 +106,12 @@ def _run_system_shell(runtime: AgentRuntime):
                 console.print(f"[bold red]Method '{method_name}' not found on agent '{agent_name}'.[/bold red]")
                 continue
             
-            method(*args)
+            result = method(*args)
+            if result is not None:
+                console.print(result)
 
         except Exception as e:
             console.print(f"[bold red]❌ Error executing command: {e}[/bold red]")
-
 
 # --- Main Application ---
 
@@ -129,24 +122,33 @@ def main(agent: str = typer.Option(None, "--agent", help="Start a shell for a sp
     console.print("=" * 60, style="bold blue")
     console.print("🚀 System Shell Initializing...")
     
-    project_root = "D:\\Jerry" 
+    project_root = "D:\\Jerry"
+    agents_dir = Path(project_root) / "agents"
     
     try:
         runtime = AgentRuntime(project_root)
         
+        # Discover available agents by looking for manifest.json files
+        available_agents = [d.name for d in agents_dir.iterdir() if d.is_dir() and (d / 'manifest.json').is_file()]
+        
         if agent:
             # Agent-specific shell mode
-            agent_class = AGENT_CLASSES.get(agent.lower())
-            if not agent_class:
-                console.print(f"[bold red]Unknown agent: '{agent}'. Available: {list(AGENT_CLASSES.keys())}[/bold red]")
+            agent_name = agent.lower()
+            if agent_name not in available_agents:
+                console.print(f"[bold red]Unknown agent: '{agent_name}'. Available: {available_agents}[/bold red]")
                 return
-            runtime.load_agent(agent.lower(), agent_class)
-            _run_agent_shell(runtime, agent.lower())
+            runtime.load_agent(agent_name)
+            _run_agent_shell(runtime, agent_name)
         else:
             # System-wide shell mode
             console.print("Loading all agents...")
-            for name, agent_class in AGENT_CLASSES.items():
-                runtime.load_agent(name, agent_class)
+            if not available_agents:
+                console.print("[yellow]No agents found. Create an agent with a manifest.json to begin.[/yellow]")
+            for agent_name in available_agents:
+                try:
+                    runtime.load_agent(agent_name)
+                except Exception as e:
+                    console.print(f"[bold red]Failed to load agent '{agent_name}': {e}[/bold red]")
             _run_system_shell(runtime)
 
         runtime.shutdown()

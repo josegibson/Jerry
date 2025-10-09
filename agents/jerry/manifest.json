@@ -1,0 +1,10 @@
+{
+    "agent_name": "jerry",
+    "description": "The foundational agent.",
+    "module_path": "agents.jerry.logic",
+    "class_name": "JerryAgent",
+    "capabilities_required": [
+        "database_system",
+        "file_system"
+    ]
+}

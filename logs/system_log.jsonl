@@ -1,0 +1,9 @@
+{"timestamp": "2025-10-09T12:50:58.993545", "agent_name": "system", "event_type": "vector_db_debug", "data": {"message": "Selected OpenAI embeddings: text-embedding-3-small"}}
+{"timestamp": "2025-10-09T12:51:30.888649", "agent_name": "system", "event_type": "vector_db_debug", "data": {"message": "Selected OpenAI embeddings: text-embedding-3-small"}}
+{"timestamp": "2025-10-09T12:51:31.868527", "agent_name": "system", "event_type": "agent_loaded", "data": {"agent_name": "jerry"}}
+{"timestamp": "2025-10-09T12:53:53.275213", "agent_name": "system", "event_type": "runtime_shutdown", "data": {}}
+{"timestamp": "2025-10-09T12:54:00.092278", "agent_name": "system", "event_type": "vector_db_debug", "data": {"message": "Selected OpenAI embeddings: text-embedding-3-small"}}
+{"timestamp": "2025-10-09T12:58:12.375464", "agent_name": "system", "event_type": "agent_loaded", "data": {"agent_name": "conrad"}}
+{"timestamp": "2025-10-09T12:58:40.824828", "agent_name": "system", "event_type": "runtime_shutdown", "data": {}}
+{"timestamp": "2025-10-09T12:58:43.212788", "agent_name": "system", "event_type": "agent_loaded", "data": {"agent_name": "jerry"}}
+{"timestamp": "2025-10-09T12:59:30.236297", "agent_name": "system", "event_type": "runtime_shutdown", "data": {}}

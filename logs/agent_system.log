@@ -1,0 +1,4 @@
+2025-10-09 12:26:48,209 - INFO - {"event": "vector_db_debug", "message": "Selected OpenAI embeddings: text-embedding-3-small"}
+2025-10-09 12:26:49,797 - INFO - {"event": "agent_loaded", "agent_name": "jerry"}
+2025-10-09 12:26:49,797 - INFO - {"event": "agent_loaded", "agent_name": "conrad"}
+2025-10-09 12:50:13,790 - INFO - {"event": "runtime_shutdown"}

@@ -1,0 +1,6 @@
+{
+    "name": "planner_system",
+    "description": "Provides tools for planning and task management.",
+    "class_name": "PlannerSystem",
+    "module_path": "systems.planner.planner_system"
+}

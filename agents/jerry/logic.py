@@ -11,8 +11,7 @@ class JerryAgent(Agent):
         """
         Adds a journal entry to the database and publishes an event.
         """
-        print("[Jerry] Received journal entry. NOTE: Database and EventBus are currently disconnected.")
-        # entry = {"id": text[:20], "content": text} # simple id for now
-        # self.context.db.saveRecord("entries", entry)
+        entry = {"id": text[:20], "content": text} # simple id for now
+        self.context.db.saveRecord("entries", entry)
         # self.context.event_bus.publish("NewJournalEntry", {"content": text})
-        print("[Jerry] Pretended to save new journal entry.")
+        print("[Jerry] Saved new journal entry.")

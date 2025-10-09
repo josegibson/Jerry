@@ -1,0 +1,6 @@
+{
+    "name": "database_system",
+    "description": "Provides non-vector data storage using SQLite.",
+    "class_name": "DatabaseSystem",
+    "module_path": "systems.database.database_system"
+}
