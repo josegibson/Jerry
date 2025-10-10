@@ -4,6 +4,6 @@
     "module_path": "systems.agent.agent_system",
     "class_name": "AgentSystem",
     "capabilities_required": [
-        "file_system"
+        "planner_system"
     ]
 }

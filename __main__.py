@@ -61,6 +61,20 @@ def _run_system_shell(runtime):
     """Runs the main system shell for multi-agent interaction."""
     console.print("✅ System Shell is ready. Type 'exit' to quit.")
     console.print("   Example: jerry.save_entry(\"Today I worked on the POC.\")")
+    # Display loaded agents and their capabilities if available
+    try:
+        loaded = getattr(runtime, "agents", {})
+        if loaded:
+            rows = []
+            for name, agent in loaded.items():
+                caps = sorted(list(getattr(agent, "capabilities", set())))
+                rows.append(f"   - {name}: [{', '.join(caps)}]")
+            console.print("Loaded agents and capabilities:")
+            for row in rows:
+                console.print(row)
+    except Exception:
+        # Non-fatal if runtime changes structure
+        pass
 
     while True:
         try:

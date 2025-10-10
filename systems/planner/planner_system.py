@@ -12,7 +12,7 @@ class PlannerSystem:
 
     def __init__(self, planner_data_path: Path):
         self.planner_data_path = planner_data_path
-        self.schedule: List[Dict[str, Any]] = self._load_schedule()
+        self.tasks: List[Dict[str, Any]] = self._load_schedule()
 
     def _load_schedule(self) -> List[Dict[str, Any]]:
         """Loads the schedule from a JSON file."""
@@ -20,9 +20,9 @@ class PlannerSystem:
             try:
                 with open(self.planner_data_path, "r", encoding="utf-8") as f:
                     schedule = json.load(f)
-                self.schedule = schedule
+                self.tasks = schedule
                 self._sort_schedule() # Sort after loading
-                return self.schedule
+                return self.tasks
             except json.JSONDecodeError:
                 print(f"Warning: Planner data file {self.planner_data_path} is corrupted. Starting with empty schedule.")
                 return []
@@ -32,13 +32,13 @@ class PlannerSystem:
         """Saves the current schedule to a JSON file."""
         try:
             with open(self.planner_data_path, "w", encoding="utf-8") as f:
-                json.dump(self.schedule, f, indent=2)
+                json.dump(self.tasks, f, indent=2)
         except IOError as e:
             print(f"Error saving planner data to {self.planner_data_path}: {e}")
 
     def _sort_schedule(self):
         """Sorts the schedule by due_time, then by priority (descending)."""
-        self.schedule.sort(key=lambda x: (datetime.fromisoformat(x['due_time']), -x['priority']))
+        self.tasks.sort(key=lambda x: (datetime.fromisoformat(x['due_time']), -x['priority']))
 
     def schedule(self, task_details: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -82,7 +82,7 @@ class PlannerSystem:
             "recurrence_interval": recurrence_interval,
             "metadata": metadata if metadata is not None else {}
         }
-        self.schedule.append(task)
+        self.tasks.append(task)
         self._sort_schedule()
         self._save_schedule()
         return task
@@ -93,7 +93,7 @@ class PlannerSystem:
         """
         current_time = datetime.now()
         due_tasks = []
-        for task in self.schedule:
+        for task in self.tasks:
             if task["status"] == "scheduled" and datetime.fromisoformat(task["due_time"]) <= current_time:
                 due_tasks.append(task)
         # Tasks are already sorted by _sort_schedule when added/updated, but re-sort for safety
@@ -125,7 +125,7 @@ class PlannerSystem:
         Updates an existing task's properties.
         Can also be used to generate the next recurrence for a completed recurring task.
         """
-        for i, task in enumerate(self.schedule):
+        for i, task in enumerate(self.tasks):
             if task["task_id"] == task_id:
                 # Update properties
                 for key, value in kwargs.items():
@@ -159,7 +159,7 @@ class PlannerSystem:
 
     def _set_task_status(self, task_id: str, status: Literal["scheduled", "pending", "completed", "cancelled", "failed"]) -> bool:
         """Helper to set task status and update timestamps."""
-        for task in self.schedule:
+        for task in self.tasks:
             if task["task_id"] == task_id:
                 task["status"] = status
                 if status in ["completed", "failed", "cancelled"]:
@@ -182,7 +182,114 @@ class PlannerSystem:
 
     def get_all_tasks(self) -> List[Dict[str, Any]]:
         """Returns all tasks in the schedule."""
-        return self.schedule
+        return self.tasks
+
+    # --- CLI Integration ---
+    def get_cli_commands(self) -> list:
+        """
+        Expose planner CLI command(s) to the host. Returns a list of mappings:
+        { 'prefix': str, 'help': str, 'handler': callable(user_input, console, agent) }
+        """
+        help_text = (
+            "help | list | schedule \"desc\" YYYY-MM-DD HH:MM [priority=<int>] "
+            "[recurrence=daily|weekly|monthly] [interval=<int>] | complete <task_id> | cancel <task_id>"
+        )
+        return [{
+            'prefix': ':plan',
+            'help': help_text,
+            'handler': self.handle_cli
+        }]
+
+    def handle_cli(self, user_input: str, console, agent) -> None:
+        """Process a ':plan' command line and render output to console."""
+        import shlex
+        tokens = shlex.split(user_input)
+        if len(tokens) < 2:
+            console.print(self._help_line())
+            return
+        sub = tokens[1].lower()
+
+        if sub in ("help", "h", "?"):
+            console.print(self._help_line())
+            return
+
+        if sub == "list":
+            for task in self.get_all_tasks():
+                console.print(f"- {task['task_id']} | {task['description']} | due {task['due_time']} | prio {task['priority']} | status {task['status']}")
+            return
+
+        if sub == "complete":
+            if len(tokens) < 3:
+                console.print("[yellow]Usage: :plan complete <task_id>[/yellow]")
+                return
+            task_id = tokens[2]
+            ok = self.mark_task_completed(task_id)
+            console.print("[green]Marked completed.[/green]" if ok else "[red]Task not found.[/red]")
+            return
+
+        if sub == "cancel":
+            if len(tokens) < 3:
+                console.print("[yellow]Usage: :plan cancel <task_id>[/yellow]")
+                return
+            task_id = tokens[2]
+            ok = self.mark_task_cancelled(task_id)
+            console.print("[green]Cancelled.[/green]" if ok else "[red]Task not found.[/red]")
+            return
+
+        if sub == "schedule":
+            if len(tokens) < 5:
+                console.print("[yellow]Usage: :plan schedule \"desc\" YYYY-MM-DD HH:MM [priority=<int>] [recurrence=daily|weekly|monthly] [interval=<int>][/yellow]")
+                return
+            description = tokens[2]
+            date_str = tokens[3]
+            time_str = tokens[4]
+            priority = 0
+            recurrence = None
+            interval = 1
+            for opt in tokens[5:]:
+                if opt.startswith("priority="):
+                    try:
+                        priority = int(opt.split("=", 1)[1])
+                    except ValueError:
+                        console.print("[yellow]priority must be an integer[/yellow]")
+                        return
+                elif opt.startswith("recurrence="):
+                    recurrence = opt.split("=", 1)[1]
+                elif opt.startswith("interval="):
+                    try:
+                        interval = int(opt.split("=", 1)[1])
+                    except ValueError:
+                        console.print("[yellow]interval must be an integer[/yellow]")
+                        return
+
+            from datetime import datetime
+            try:
+                due_time = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M")
+            except ValueError:
+                console.print("[red]Invalid date/time. Use YYYY-MM-DD HH:MM[/red]")
+                return
+
+            details = {
+                "agent_id": getattr(agent, "__class__", type(agent)).__name__,
+                "description": description,
+                "due_time": due_time,
+                "priority": priority,
+                "recurrence_pattern": recurrence,
+                "recurrence_interval": interval,
+                "metadata": {}
+            }
+            task = self.schedule(details)
+            console.print(f"[green]Scheduled {task['task_id']} due {task['due_time']}[/green]")
+            return
+
+        # Fallback
+        console.print(self._help_line())
+
+    def _help_line(self) -> str:
+        return (
+            ":plan help | :plan list | :plan schedule \"desc\" YYYY-MM-DD HH:MM [priority=<int>] "
+            "[recurrence=daily|weekly|monthly] [interval=<int>] | :plan complete <task_id> | :plan cancel <task_id>"
+        )
 
 # Example Usage (for testing purposes)
 if __name__ == "__main__":

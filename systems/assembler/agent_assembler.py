@@ -109,6 +109,9 @@ class AgentAssembler:
 				instance = system_class(monitor=self.monitor, db_path=str(agent_data_dir / "system.db"))
 			elif sys_name == "file_system":
 				instance = system_class(monitor=self.monitor, root_dir=agent_dir)
+			elif sys_name == "planner_system":
+				# Per-agent planner data stored under the agent's data directory
+				instance = system_class(planner_data_path=agent_data_dir / "planner.json")
 			else:
 				instance = self._get_system_instance(sys_name)
 			agent_systems[sys_name] = instance
@@ -116,6 +119,8 @@ class AgentAssembler:
 		# Build a simple context with raw systems and data_dir hint
 		agent_systems["data_dir"] = agent_data_dir
 		agent_context = SimpleContext(agent_systems)
+		# Expose declared capabilities on the context for runtime checks
+		setattr(agent_context, "capabilities", set(required_systems))
 		
 		# Dynamically load the agent class
 		module_path = agent_manifest["module_path"]
@@ -130,6 +135,12 @@ class AgentAssembler:
 		# Pass the context to the agent's constructor
 		# If the agent inherits AgentSystem, it will manage its own entries.db
 		agent_instance = agent_class(agent_context)
+		# Attach manifest and capabilities to the agent instance for easy access
+		setattr(agent_instance, "manifest", agent_manifest)
+		setattr(agent_instance, "capabilities", set(required_systems))
+		# Convenience helper for capability checks
+		if not hasattr(agent_instance, "has_capability"):
+			setattr(agent_instance, "has_capability", lambda name: name in getattr(agent_instance, "capabilities", set()))
 		
 		self.agents[agent_name] = agent_instance
 		self.monitor.log_event("runtime", "agent_loaded", {"agent_name": agent_name})
