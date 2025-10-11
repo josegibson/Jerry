@@ -124,7 +124,7 @@ class AgentAssembler:
 		
 		# Pass the context to the agent's constructor
 		# If the agent inherits AgentSystem, it will manage its own entries.db
-		agent_instance = agent_class(agent_context)
+		agent_instance = AgentSystem(agent_context)
 		# Attach manifest and capabilities to the agent instance for easy access
 		setattr(agent_instance, "manifest", agent_manifest)
 		setattr(agent_instance, "capabilities", set(required_systems))

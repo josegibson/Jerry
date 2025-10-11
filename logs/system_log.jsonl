@@ -86,3 +86,5 @@
 {"timestamp": "2025-10-11T13:22:17.679502", "source": "runtime", "event_type": "shutdown", "data": {}}
 {"timestamp": "2025-10-11T13:22:20.263982", "source": "runtime", "event_type": "agent_loaded", "data": {"agent_name": "jerry"}}
 {"timestamp": "2025-10-11T13:22:39.406544", "source": "runtime", "event_type": "shutdown", "data": {}}
+{"timestamp": "2025-10-11T15:52:24.725121", "source": "runtime", "event_type": "agent_loaded", "data": {"agent_name": "jerry"}}
+{"timestamp": "2025-10-11T15:53:03.248257", "source": "runtime", "event_type": "shutdown", "data": {}}

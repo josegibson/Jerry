@@ -1,6 +1,0 @@
-{
-    "name": "file_system",
-    "description": "Provides tools for interacting with the agent's private file system.",
-    "class_name": "FileSystem",
-    "module_path": "systems.file_system.file_system"
-}

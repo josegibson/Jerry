@@ -1,6 +1,0 @@
-{
-    "name": "event_bus",
-    "description": "A system for inter-agent communication.",
-    "module_path": "systems.event_bus.event_bus_system",
-    "class_name": "EventBusSystem"
-}
