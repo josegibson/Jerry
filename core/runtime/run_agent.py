@@ -2,8 +2,8 @@ import argparse
 from pathlib import Path
 from rich.console import Console
 
-from systems.assembler.agent_assembler import AgentAssembler
-from systems.runtime.agent_host import AgentHost
+from core.assembler.agent_assembler import AgentAssembler
+from core.runtime.agent_host import AgentHost
 
 
 def main():

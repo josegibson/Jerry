@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any
 
-from systems.agent.entries_db import EntriesDB
+from core.agent.entries_db import EntriesDB
 
 
 class AgentSystem:

@@ -77,3 +77,12 @@
 {"timestamp": "2025-10-10T19:00:29.862217", "source": "runtime", "event_type": "agent_loaded", "data": {"agent_name": "jerry"}}
 {"timestamp": "2025-10-10T19:09:02.325976", "source": "runtime", "event_type": "shutdown", "data": {}}
 {"timestamp": "2025-10-10T19:09:05.316561", "source": "runtime", "event_type": "agent_loaded", "data": {"agent_name": "jerry"}}
+{"timestamp": "2025-10-11T13:06:20.456943", "source": "runtime", "event_type": "shutdown", "data": {}}
+{"timestamp": "2025-10-11T13:08:50.275499", "source": "runtime_error", "event_type": "agent_load_failed", "data": {"agent": "jerry", "error": "No module named 'systems.agent'"}}
+{"timestamp": "2025-10-11T13:09:29.996547", "source": "runtime_error", "event_type": "agent_load_failed", "data": {"agent": "jerry", "error": "No module named 'systems.agent'"}}
+{"timestamp": "2025-10-11T13:10:14.456794", "source": "runtime", "event_type": "agent_loaded", "data": {"agent_name": "jerry"}}
+{"timestamp": "2025-10-11T13:16:13.640365", "source": "runtime_error", "event_type": "agent_load_failed", "data": {"agent": "jerry", "error": "No module named 'core.agent.jerry_system'"}}
+{"timestamp": "2025-10-11T13:16:28.361273", "source": "runtime", "event_type": "agent_loaded", "data": {"agent_name": "jerry"}}
+{"timestamp": "2025-10-11T13:22:17.679502", "source": "runtime", "event_type": "shutdown", "data": {}}
+{"timestamp": "2025-10-11T13:22:20.263982", "source": "runtime", "event_type": "agent_loaded", "data": {"agent_name": "jerry"}}
+{"timestamp": "2025-10-11T13:22:39.406544", "source": "runtime", "event_type": "shutdown", "data": {}}

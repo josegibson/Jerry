@@ -1,8 +1,6 @@
 {
     "agent_name": "jerry",
     "description": "The foundational agent.",
-    "module_path": "systems.agent.agent_system",
-    "class_name": "AgentSystem",
     "capabilities_required": [
         "planner_system"
     ]

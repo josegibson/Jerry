@@ -3,8 +3,8 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 
-from systems.dev_monitor.dev_monitor import DevMonitor
-from systems.agent.agent_system import AgentSystem
+from core.dev_monitor.dev_monitor import DevMonitor
+from core.agent.agent_system import AgentSystem
 
 
 class Agent:
@@ -122,16 +122,6 @@ class AgentAssembler:
 		# Expose declared capabilities on the context for runtime checks
 		setattr(agent_context, "capabilities", set(required_systems))
 		
-		# Dynamically load the agent class
-		module_path = agent_manifest["module_path"]
-		class_name = agent_manifest["class_name"]
-		try:
-			module = importlib.import_module(module_path)
-			agent_class = getattr(module, class_name)
-		except (ImportError, AttributeError) as e:
-			self.monitor.log_event("runtime_error", "agent_load_failed", {"agent": agent_name, "error": str(e)})
-			raise RuntimeError(f"Could not load agent class for '{agent_name}': {e}")
-
 		# Pass the context to the agent's constructor
 		# If the agent inherits AgentSystem, it will manage its own entries.db
 		agent_instance = agent_class(agent_context)
