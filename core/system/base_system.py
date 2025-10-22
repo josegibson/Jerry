@@ -1,4 +1,4 @@
-from .dev_monitor.dev_monitor import DevMonitor
+from core.monitoring.dev_monitor import DevMonitor
 
 class BaseSystem:
     """

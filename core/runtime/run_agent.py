@@ -2,8 +2,7 @@ import argparse
 from pathlib import Path
 from rich.console import Console
 
-from core.assembler.agent_assembler import AgentAssembler
-from core.runtime.agent_host import AgentHost
+from core.runtime.agent_runtime import AgentRuntime
 
 
 def main():
@@ -14,20 +13,15 @@ def main():
 	console = Console()
 	project_root = str(Path(__file__).resolve().parents[2])
 
-	assembler = AgentAssembler(project_root)
+	runtime = AgentRuntime(project_root, console)
 	agent_name = args.agent.lower()
 
-	# Load the agent via its manifest
-	agent = assembler.load_agent(agent_name)
-
-	# Host runtime and CLI
-	host = AgentHost(agent, console)
-	host.start()
 	try:
-		host.run_cli(agent_name)
+		# Load and run the agent
+		runtime.load_agent(agent_name)
+		runtime.run_agent_cli(agent_name)
 	finally:
-		host.stop()
-		assembler.shutdown()
+		runtime.shutdown()
 		console.print("👋 Goodbye!")
 
 

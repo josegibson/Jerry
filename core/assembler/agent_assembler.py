@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 
-from core.dev_monitor.dev_monitor import DevMonitor
+from core.monitoring.dev_monitor import DevMonitor
 from core.agent.agent_system import AgentSystem
 
 
