@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jerry"
+version = "0.1.0"
+description = "AI Agent Instantiation Tool - turn any directory into an intelligent workspace"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+authors = [{name = "josegibson"}]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=10.0.0",
+    "python-dotenv>=1.0.1",
+    "google-generativeai>=0.8.0",
+    "openai>=1.0.0",
+    "langchain-core>=0.3.0",
+    "langchain-google-genai>=1.0.0",
+    "langchain-openai>=0.2.0",
+    "langchain-community>=0.3.0",
+    "langgraph>=0.2.34",
+    "pydantic>=2.0.0",
+    "chromadb>=0.5.4",
+    "langchain-text-splitters>=0.3.0",
+    "langchain-chroma>=0.2.0",
+    "tavily-python>=0.4.0",
+]
+
+[project.scripts]
+jerry = "jerry.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["jerry*", "core*"]
+exclude = ["jerry_env*", "test_workspace*", "docs*", "*.tests*"]

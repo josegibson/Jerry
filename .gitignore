@@ -1,7 +1,13 @@
 .env
 .chroma/
+.jerry/
 **/__pycache__/
 **/*.pyc
 jerry_env
 Vault
 .github
+_archive
+docs
+test_workspace
+
+jerry.egg-info

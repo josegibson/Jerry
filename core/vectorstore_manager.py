@@ -61,22 +61,29 @@ class VectorStoreManager:
             
         raise RuntimeError("No embedding backend available. Install langchain-openai or langchain-huggingface and set API keys.")
 
-    def add_documents_from_path(self, source_path: Path, glob_pattern: str = "**/*.md") -> Dict[str, int]:
+    def add_documents_from_path(self, source_path: Path, glob_pattern: str = "**/*.[mt][dx]t") -> Dict[str, int]:
         """
         Loads, splits, and indexes all documents from a given path.
         Returns a dictionary with statistics about the indexing process.
+        Automatically excludes the .jerry folder from indexing.
+        Supports both .md and .txt files by default.
         """
         self.monitor.log_event("vector_store_debug", {"message": f"Indexing documents from '{source_path}'"})
         
         docs: List[Document] = []
         
-        for file_path in source_path.rglob(glob_pattern):
-            if file_path.is_file():
-                try:
-                    loader = TextLoader(str(file_path), encoding="utf-8")
-                    docs.extend(loader.load())
-                except Exception as e:
-                    self.monitor.log_event("vector_store_warning", {"message": f"Could not load file {file_path}. Error: {e}"})
+        # Index both .md and .txt files
+        for pattern in ["**/*.md", "**/*.txt"]:
+            for file_path in source_path.rglob(pattern):
+                # Skip files inside the .jerry folder
+                if ".jerry" in file_path.parts:
+                    continue
+                if file_path.is_file():
+                    try:
+                        loader = TextLoader(str(file_path), encoding="utf-8")
+                        docs.extend(loader.load())
+                    except Exception as e:
+                        self.monitor.log_event("vector_store_warning", {"message": f"Could not load file {file_path}. Error: {e}"})
         
         if not docs:
             self.monitor.log_event("vector_store_debug", {"message": "No new documents found to index."})

@@ -157,9 +157,22 @@ def create_agent_graph(
     preferred = (preferred_provider or "").lower()
     llm = None
 
+    # Read API keys from environment (loaded by dotenv earlier)
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    google_api_key = os.getenv("GOOGLE_API_KEY")
+
     providers = {
-        'gemini': lambda: ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2),
-        'openai': lambda: ChatOpenAI(model="gpt-4-turbo", temperature=0.2, streaming=True)
+        'gemini': lambda: ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash-lite", 
+            temperature=0.2,
+            google_api_key=google_api_key
+        ) if google_api_key else None,
+        'openai': lambda: ChatOpenAI(
+            model="gpt-4-turbo", 
+            temperature=0.2, 
+            streaming=True,
+            api_key=openai_api_key
+        ) if openai_api_key else None
     }
     
     available_providers = ['gemini', 'openai']
@@ -170,10 +183,12 @@ def create_agent_graph(
     for provider_name in available_providers:
         try:
             llm = providers[provider_name]()
+            if not llm:
+                monitor.log_event("graph_warning", {"message": f"Provider {provider_name} skipped: API key not set."})
+                continue
             selected_provider = provider_name
-            if llm:
-                monitor.log_event("graph_debug", {"message": f"Successfully initialized LLM provider: {provider_name}"})
-                break
+            monitor.log_event("graph_debug", {"message": f"Successfully initialized LLM provider: {provider_name}"})
+            break
         except Exception as ex:
             monitor.log_event("graph_warning", {"message": f"Provider init failed for {provider_name}: {ex}"})
             continue

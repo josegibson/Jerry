@@ -8,6 +8,8 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
 
+from .database import LogDatabase
+
 # A dictionary of various embedding providers and their models/pricing.
 # Prices are in USD per 1,000 tokens.
 # Last verified: September 2025.
@@ -30,12 +32,23 @@ class AgentMonitor:
     - Analysis of the agent's knowledge base (workspace files and vector store).
     """
 
-    def __init__(self, agent_name: str, log_dir: Path):
+    def __init__(self, agent_name: str, log_dir: Path, session_id: Optional[str] = None, 
+                 log_db_path: Optional[Path] = None):
         self.agent_name = agent_name
+        self.session_id = session_id
         self.log_file_path = log_dir / f"agent_{agent_name}.log"
+        
+        # Initialize database logging if path provided
+        if log_db_path:
+            self.log_db = LogDatabase(log_db_path)
+        else:
+            self.log_db = None
+        
+        # Keep file logging as fallback
         self._configure_logging()
         self.logger = logging.getLogger(self.agent_name)
 
+        # In-memory metrics for quick access
         self.token_metrics: Dict[str, Any] = {
             "session_total": {"input": 0, "output": 0, "total": 0},
             "by_provider": {}
@@ -57,7 +70,13 @@ class AgentMonitor:
         logger.addHandler(handler)
 
     def log_event(self, event_type: str, data: Dict[str, Any]):
-        """Logs a structured event."""
+        """Logs a structured event to both database and file."""
+        # Log to database if available
+        if self.log_db:
+            level = data.get('level', 'INFO')
+            self.log_db.log_event(event_type, data, self.session_id, level)
+        
+        # Log to file as fallback
         log_entry = {"event": event_type, **data}
         self.logger.info(json.dumps(log_entry))
 
@@ -67,7 +86,11 @@ class AgentMonitor:
         output_tokens = usage_data.get("output_tokens", 0)
         total_tokens = usage_data.get("total_tokens", input_tokens + output_tokens)
 
-        # Update session total
+        # Log to database if available
+        if self.log_db:
+            self.log_db.log_token_usage(provider_name, usage_data, self.session_id)
+
+        # Update in-memory session total
         self.token_metrics["session_total"]["input"] += input_tokens
         self.token_metrics["session_total"]["output"] += output_tokens
         self.token_metrics["session_total"]["total"] += total_tokens
@@ -129,5 +152,9 @@ class AgentMonitor:
         return analysis
 
     def get_token_metrics(self) -> Dict[str, Any]:
-        """Returns the current token usage metrics."""
+        """Returns the current token usage metrics from database if available."""
+        if self.log_db and self.session_id:
+            # Get from database for accuracy
+            return self.log_db.get_token_usage_summary(self.session_id)
+        # Fallback to in-memory metrics
         return self.token_metrics

@@ -68,13 +68,13 @@ def create_file_tools(workspace_path: Path) -> List[BaseTool]:
 
     @tool
     def list_files(directory: str = ".") -> str:
-        """Lists all files and directories in a specified subdirectory of the workspace."""
+        """Lists all files and directories in a specified subdirectory of the workspace (excludes .jerry folder)."""
         try:
             target_dir = _get_safe_path(directory)
             if not target_dir.is_dir():
                 return f'{{"error": "DirectoryNotFound", "message": "The directory \'{directory}\' does not exist."}}'
 
-            items = sorted([f.name for f in target_dir.iterdir()])
+            items = sorted([f.name for f in target_dir.iterdir() if f.name != ".jerry"])
             return json.dumps(items) if items else "[]"
         except Exception as e:
             return _format_error("ListError", str(e))
