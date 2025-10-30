@@ -46,6 +46,11 @@ class AgentRuntime:
         # Load configuration
         with open(self.config_path, "r", encoding="utf-8") as f:
             self.config: Dict[str, Any] = json.load(f)
+
+        if name and self.config.get("name") != name:
+            self.config["name"] = name
+            with open(self.config_path, "w", encoding="utf-8") as f:
+                json.dump(self.config, f, indent=2)
         
         # Initialize session database
         self.session_db = SessionDatabase(self.session_db_path)
@@ -108,7 +113,8 @@ class AgentRuntime:
         
         return {
             "response": response_text,
-            "tool_results": final_state.get("tool_results")
+            "tool_results": final_state.get("tool_results"),
+            "used_sources": final_state.get("used_sources")
         }
 
     def analyze_knowledge_base(self) -> Dict[str, Any]:

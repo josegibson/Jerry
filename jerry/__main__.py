@@ -19,7 +19,7 @@ from rich.json import JSON
 from core.agent_runtime import AgentRuntime
 
 app = typer.Typer(
-    help="Jerry - AI Agent Instantiation Tool",
+    help="Jerry - AI Agent",
     add_completion=False
 )
 
@@ -45,6 +45,20 @@ def _print_tool_results(tool_results: Optional[List[Dict[str, Any]]]):
     console.print("--------------------", style="bold yellow")
 
 
+def _print_files_used(turn_output: Dict[str, Any]):
+    """Helper to print the files used for the response."""
+    used_sources = turn_output.get("used_sources")
+    if not used_sources:
+        return
+    
+    console.print("\n--- Files Used ---", style="bold yellow")
+    # Filter out None or empty strings and remove duplicates
+    unique_sources = sorted(list(set(s for s in used_sources if s)))
+    for source in unique_sources:
+        console.print(f"- {source}")
+    console.print("--------------------", style="bold yellow")
+
+
 def _track_and_print_token_usage(runtime: AgentRuntime):
     session_metrics = runtime.monitor.get_token_metrics()
     session_total = session_metrics.get("session_total", {"input": 0, "output": 0, "total": 0})
@@ -64,33 +78,33 @@ def _handle_exit(runtime: AgentRuntime):
     console.print("\n[bold yellow]Shutting down and archiving session...[/bold yellow]")
     shutdown_summary = runtime.shutdown()
     console.print(shutdown_summary["message"])
-    console.print("\n👋 Goodbye!")
+    console.print("\nGoodbye!")
     return True  # Signal to exit the loop
 
 
 def _handle_analyze(runtime: AgentRuntime):
-    console.print("\n[bold blue]🔬 Analyzing knowledge base...[/bold blue]")
+    console.print("\n[bold blue]Analyzing knowledge base...[/bold blue]")
     analysis = runtime.analyze_knowledge_base()
     console.print(JSON(json.dumps(analysis, indent=2)))
     return False
 
 
 def _handle_reindex(runtime: AgentRuntime):
-    console.print("\n[bold green]🔄 Ingesting workspace files...[/bold green]")
+    console.print("\n[bold green]Ingesting workspace files...[/bold green]")
     stats = runtime.reindex_workspace()
     console.print(f"Ingestion complete. Indexed [green]{stats['indexed_chunks']}[/green] chunks from [green]{stats['file_count']}[/green] files.")
     return False
 
 
 def _handle_history(runtime: AgentRuntime):
-    console.print("\n[bold magenta]📜 Current Session History:[/bold magenta]")
+    console.print("\n[bold magenta]Current Session History:[/bold magenta]")
     history = runtime.get_session_history()
     console.print(history)
     return False
 
 
 def _handle_config(runtime: AgentRuntime):
-    console.print("\n[bold yellow]⚙️ Agent Configuration:[/bold yellow]")
+    console.print("\n[bold yellow]Agent Configuration:[/bold yellow]")
     config = runtime.get_config()
     console.print(JSON(json.dumps(config, indent=2)))
     return False
@@ -145,17 +159,17 @@ def run_interactive_cli(agent_dir: str, provider: Optional[str] = None, name: Op
             system_prompt=system_prompt
         )
         console.print("=" * 60, style="bold blue")
-        console.print(f"🤖 Agent '[bold green]{runtime.config.get('name')}[/bold green]' loaded. Welcome back!")
+        console.print(f"Agent '[bold green]{runtime.config.get('name')}[/bold green]' loaded. Welcome back!")
         console.print(f"   Provider: [yellow]{runtime.config.get('provider') or 'default'}[/yellow] | Type [cyan]/help[/cyan] for commands.")
         console.print("=" * 60, style="bold blue")
     except Exception as e:
-        console.print(f"❌ [bold red]Error loading agent from '{agent_dir}': {e}[/bold red]")
+        console.print(f"[bold red]Error loading agent from '{agent_dir}': {e}[/bold red]")
         traceback.print_exc()
         return
 
     while True:
         try:
-            user_input = console.input("\n[bold blue]📝 You:[/bold blue] ").strip()
+            user_input = console.input("\n[bold blue]You:[/bold blue] ").strip()
 
             if not user_input:
                 continue
@@ -173,7 +187,7 @@ def run_interactive_cli(agent_dir: str, provider: Optional[str] = None, name: Op
                 continue
             
             # --- AGENT INVOCATION ---
-            console.print(f"\n[bold green]🤖 {runtime.config.get('name')}:[/bold green] ", end="")
+            console.print(f"\n[bold green]{runtime.config.get('name')}:[/bold green] ", end="")
             
             turn_output = runtime.invoke(user_input)
             
@@ -181,13 +195,14 @@ def run_interactive_cli(agent_dir: str, provider: Optional[str] = None, name: Op
 
             _print_tool_results(turn_output["tool_results"])
             _track_and_print_token_usage(runtime)
+            _print_files_used(turn_output)
 
         except KeyboardInterrupt:
             _handle_exit(runtime)
             break
         except Exception as e:
             runtime.monitor.log_event("error", {"message": str(e), "traceback": traceback.format_exc()})
-            console.print(f"[bold red]❌ An error occurred:[/bold red] {e}")
+            console.print(f"[bold red]An error occurred:[/bold red] {e}")
             traceback.print_exc()
 
 
@@ -207,9 +222,9 @@ def main(
         help="LLM provider (openai or gemini). Defaults to auto-detect."
     ),
     name: Optional[str] = typer.Option(
-        None,
+        "Jerry",
         "--name", "-n",
-        help="Name for the agent. Defaults to directory name."
+        help="Name for the agent. Defaults to Jerry."
     ),
     system_prompt: Optional[str] = typer.Option(
         None,
@@ -241,7 +256,7 @@ def main(
             console.print(f"[bold cyan]Re-indexing workspace:[/bold cyan] {path}")
             runtime = AgentRuntime(path, provider=provider, name=name, system_prompt=system_prompt)
             runtime.reindex_workspace()
-            console.print("[bold green]✓[/bold green] Re-indexing complete.")
+            console.print("[bold green]Re-indexing complete.[/bold green]")
             return
         
         # Run interactive CLI

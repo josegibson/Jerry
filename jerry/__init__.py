@@ -1,5 +1,5 @@
 """
-Jerry - Agent Instantiation Tool
+Jerry - AI Agent
 
 A tool that enables users to instantiate an AI agent from any directory.
 """

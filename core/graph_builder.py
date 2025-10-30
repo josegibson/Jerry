@@ -28,6 +28,7 @@ class ConversationState(TypedDict, total=False):
     messages: Annotated[List[BaseMessage], add]
     provider_name: Optional[Literal["OpenAI", "Gemini"]]
     retrieved_context: str
+    used_sources: List[str]
 
 # ==============================================================================
 # 2. GRAPH BUILDER CLASS
@@ -61,11 +62,13 @@ class GraphBuilder:
 
     def node_retrieve(self, state: ConversationState) -> dict:
         retrieved_context = ""
+        used_sources = []
         last_user_msg = next((m.content for m in reversed(state["messages"]) if isinstance(m, HumanMessage)), None)
         if last_user_msg:
             docs = self.retriever.invoke(last_user_msg)
             context = "\n\n".join(f"Source: {d.metadata.get('source', 'N/A')}\n{d.page_content}" for d in docs)
             retrieved_context = context
+            used_sources = [d.metadata.get('source', 'N/A') for d in docs]
             self.monitor.log_event("graph_debug", {
                 "node": "retrieve",
                 "message": "Retrieved context for user message.",
@@ -73,7 +76,7 @@ class GraphBuilder:
                 "retrieved_docs": len(docs),
                 "retrieved_context_len": len(retrieved_context)
             })
-        return {"retrieved_context": retrieved_context}
+        return {"retrieved_context": retrieved_context, "used_sources": used_sources}
 
     def node_llm(self, state: ConversationState) -> dict:
         messages_to_send = [SystemMessage(content=self.system_prompt)]
